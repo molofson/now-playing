@@ -59,13 +59,6 @@ recreate-venv:
 	.venv/bin/pip install -r requirements-dev.txt
 	@echo "Virtual environment recreated."
 
-# ─── AI Commit ───────────────────────────────────────────────────────────
-commit-ai:
-	@echo "Running AI-powered commit..."
-	@command -v aicommits >/dev/null 2>&1 || { echo "aicommits not found. Is Node installed?"; exit 1; }
-	aicommits
-	@echo "AI commit completed."
-
 # ─── Run All Checks ──────────────────────────────────────────────────────
 check: format lint test
 

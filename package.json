@@ -6,7 +6,6 @@
   "description": "![CI](https://github.com/molofson/now-playing/actions/workflows/ci.yml/badge.svg) # Test aicommits",
   "main": "index.js",
   "scripts": {
-    "commit-ai": "aicommits",
     "test": "pytest",
     "lint": "flake8 ."
   },

@@ -31,12 +31,6 @@ ENV LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \
     LC_ALL=en_US.UTF-8
 
-# Install Node.js + aicommits
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs && \
-    npm install -g aicommits && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
 # Create non-root user
 RUN useradd -m vscode
 # Set Bash as the default shell for the vscode user (non-interactive alternative to chsh)
