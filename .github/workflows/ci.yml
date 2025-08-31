@@ -1,9 +1,22 @@
+# .github/workflows/ci.yml
+# -----------------------------------------------------------------------------
+# GitHub Actions: Continuous Integration Workflow
+#
+# This workflow runs on every push or pull request and:
+#   - Sets up Python environment
+#   - Installs development dependencies
+#   - Runs formatter, linter, and tests
+#   - Applies pre-commit hooks to all files
+#
+# Supports manual triggering via GitHub UI.
+# -----------------------------------------------------------------------------
+
 name: CI
 
 on:
   push:
   pull_request:
-  workflow_dispatch:  # ✅ Allows triggering the workflow manually from GitHub
+  workflow_dispatch:  # ✅ Manual trigger from GitHub UI
 
 jobs:
   build:
@@ -24,9 +37,15 @@ jobs:
           .venv/bin/pip install --upgrade pip
           .venv/bin/pip install -r requirements-dev.txt
 
-      - name: Run checks
+      - name: Run checks (Make targets)
         run: |
           source .venv/bin/activate
           make format
           make lint
           make test
+
+      - name: Run pre-commit hooks
+        run: |
+          source .venv/bin/activate
+          pip install pre-commit
+          pre-commit run --all-files
