@@ -1,0 +1,26 @@
+{
+    "name": "nowplaying-dev",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "settings": {
+        "python.defaultInterpreterPath": "/workspaces/now-playing/.venv/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.formatting.provider": "black",
+        "python.testing.pytestEnabled": true,
+        "editor.formatOnSave": true
+    },
+    "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter"
+    ],
+    "postCreateCommand": "pre-commit install",
+    "remoteUser": "vscode",
+    "remoteEnv": {
+        "SHELL": "/bin/bash"
+    },
+    "envFile": ".devcontainer/.env"
+}
