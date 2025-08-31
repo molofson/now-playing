@@ -5,7 +5,7 @@
         "context": ".."
     },
     "settings": {
-        "python.defaultInterpreterPath": "/workspaces/now-playing/.venv/bin/python",
+        "python.defaultInterpreterPath": "/home/vscode/.venv/bin/python",
         "python.linting.enabled": true,
         "python.linting.flake8Enabled": true,
         "python.formatting.provider": "black",
