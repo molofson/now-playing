@@ -1,0 +1,40 @@
+# .pre-commit-config.yaml
+# -----------------------------------------------------------------------------
+# Pre-commit Configuration
+#
+# This file defines the set of hooks that are automatically run before commits.
+# Hooks enforce code formatting, linting, and other checks to maintain code quality.
+#
+# Usage:
+#   - Install pre-commit:      pip install pre-commit
+#   - Install hooks:           pre-commit install
+#   - Run manually on all:     pre-commit run --all-files
+#
+# Hooks included:
+#   - black: Python formatter
+#   - flake8: Linting
+#   - end-of-file-fixer: Ensures newline at EOF
+#   - trailing-whitespace: Removes trailing whitespace
+#   - check-added-large-files: Prevents large file commits
+# -----------------------------------------------------------------------------
+
+repos:
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+        language_version: python3
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
+        additional_dependencies: [flake8-bugbear]
+        language_version: python3
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files

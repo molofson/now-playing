@@ -1,0 +1,60 @@
+# -----------------------------------------------------------------------------
+# CI Workflow
+#
+# Purpose:
+#   This workflow is the main continuous integration (CI) pipeline. It verifies:
+#     - Code formatting using `black`
+#     - Linting using `flake8` with bugbear
+#     - Unit testing via `pytest`
+#     - Pre-commit hooks against all files for consistent style
+#
+# Discussion notes:
+#   - All Python tasks are isolated in a virtual environment (.venv)
+#   - Pre-commit is run after core checks to ensure repo hygiene
+#   - This is meant to run on every PR and push (to all branches)
+#   - It's useful as a signal check before merging, but does NOT alter files
+# -----------------------------------------------------------------------------
+
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:  # ✅ Allows triggering manually via GitHub UI
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 🧾 Check out repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 🐍 Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 📦 Install developer dependencies in a venv
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r requirements-dev.txt
+
+      # ✅ Format, Lint, and Test
+      - name: Run checks
+        run: |
+          source .venv/bin/activate
+          make format
+          make lint
+          make test
+
+      # 🧹 Run pre-commit hooks on all files
+      - name: Run pre-commit hooks
+        run: |
+          source .venv/bin/activate
+          pip install pre-commit
+          pre-commit run --all-files
