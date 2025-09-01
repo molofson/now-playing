@@ -1,6 +1,10 @@
-__pycache__/
+*.bak
+*.log
 *.py[cod]
+*.tmp
+.coverage
+.devcontainer/.env
+.pytest_cache/
 .venv/
 .vscode/
-.devcontainer/.env
-.coverage
+__pycache__/

@@ -1,0 +1,59 @@
+# -----------------------------------------------------------------------------
+# Changelog Automation Workflow
+#
+# Purpose:
+#   Automatically generates and updates CHANGELOG.md after a merge to `main`
+#   using `git-cliff`, based on conventional commit messages.
+#
+# Discussion notes:
+#   - This workflow runs only on the `main` branch and on-demand
+#   - It uses conventional commits like `feat`, `fix`, `chore`, etc.
+#   - Helps automate changelog hygiene and ensures consistent formatting
+#   - Auto-commits the updated CHANGELOG.md if there are changes
+#   - No formatting is applied here — handled separately in `ci.yml`
+# -----------------------------------------------------------------------------
+
+name: Changelog
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # ✅ Optional manual trigger
+
+jobs:
+  generate-changelog:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 🧾 Check out the latest main branch
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ⚙️ Set up Git user for commit automation
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # 🧩 Install git-cliff via GitHub-provided binary helper
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      # 📄 Generate or update CHANGELOG.md from commit history
+      - name: Generate changelog
+        run: |
+          git cliff --prepend CHANGELOG.md -o CHANGELOG.md
+
+      # 📤 Commit and push the changelog update, if changed
+      - name: Commit and push changelog
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+          else
+            git add CHANGELOG.md
+            git commit -m "chore(changelog): update changelog after merge to main"
+            git push
+          fi
