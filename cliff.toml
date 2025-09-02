@@ -1,21 +1,36 @@
-# ./cliff.toml
+[git]
+conventional_commits = true
+filter_unconventional = false
+
+commit_parsers = [
+    { message = "^feat", group = "Features" },
+    { message = "^fix", group = "Bug Fixes" },
+    { message = "^doc", group = "Documentation" },
+    { message = "^refactor", group = "Refactoring" },
+    { message = "^chore", group = "Chores" },
+    { message = "^ci", group = "CI" },
+    { message = "^test", group = "Tests" },
+    { message = "^perf", group = "Performance" },
+]
+
+[remote.github]
+owner = "molofson"
+repo = "now-playing"
+
 [changelog]
 header = """
 # Changelog
-
-All notable changes to this project will be documented in this file.
 """
-body = """
-{% for group, commits in commits | group_by(attribute="group") %}
-### {{ group | upper_first }}
+# One blank line *after* each group title
+group = """
+### {{ group }}
 
-{% for commit in commits %}
-- {{ commit.message | strip }} ([{{ commit.id | truncate(length=7, end="" }}]({{ commit.remote }}{{ commit.id }})
-{% endfor %}
-
-{% endfor %}
 """
+# No blank lines between commits
+body = """{% for commit in commits -%}
+- {{ commit.message | trim }} ([{{ commit.id | truncate(end="7") }}](https://github.com/molofson/now-playing/commit/{{ commit.id }}))
+{% endfor -%}"""
 footer = ""
 
-[git]
-tag_pattern = "v[0-9]*"
+[preprocessors]
+filter_commits = true

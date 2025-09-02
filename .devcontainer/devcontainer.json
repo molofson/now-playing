@@ -17,7 +17,7 @@
         "ms-python.vscode-pylance",
         "ms-toolsai.jupyter"
     ],
-    "postCreateCommand": "pre-commit install",
+    "postCreateCommand": "make install-dev pre-commit-install env",
     "remoteUser": "vscode",
     "remoteEnv": {
         "SHELL": "/bin/bash"
