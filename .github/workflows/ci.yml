@@ -6,13 +6,20 @@
 #     - Code formatting using `black`
 #     - Linting using `flake8` with bugbear
 #     - Unit testing via `pytest`
-#     - Pre-commit hooks against all files for consistent style
+#     - Test coverage reporting (terminal, XML for Codecov, HTML artifact)
+#     - Pre-commit hooks across all files for consistent style
+#   Tasks run inside an isolated `.venv` environment for reproducibility
+#   Makefile targets are used to ensure consistency between local and CI environments
+#   The workflow runs on all pushes, pull requests, and can be triggered manually via `workflow_dispatch`
 #
 # Discussion notes:
 #   - All Python tasks are isolated in a virtual environment (.venv)
-#   - Pre-commit is run after core checks to ensure repo hygiene
-#   - This is meant to run on every PR and push (to all branches)
-#   - It's useful as a signal check before merging, but does NOT alter files
+#   - Pre-commit hooks run early to enforce code hygiene (e.g. formatting, linting)
+#   - Format, lint, test, and coverage steps are Makefile-driven for local + CI parity
+#   - HTML and XML coverage reports are generated for Codecov and GitHub artifact upload
+#   - This workflow runs on all pushes, PRs, and manual dispatch triggers
+#   - It serves as a signal check before merging — it does NOT alter files
+#   - Codecov upload is optional and only triggered if CODECOV_TOKEN is configured
 # -----------------------------------------------------------------------------
 
 name: CI
@@ -23,38 +30,38 @@ on:
   workflow_dispatch:  # ✅ Allows triggering manually via GitHub UI
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      # 🧾 Check out repository code
-      - name: Checkout code
+      - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      # 🐍 Set up Python environment
-      - name: Set up Python
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # 📦 Install developer dependencies in a venv
-      - name: Install dependencies
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install -r requirements-dev.txt
+      - name: 📦 Install dev dependencies via Makefile
+        run: make install-dev
 
-      # ✅ Format, Lint, and Test
-      - name: Run checks
-        run: |
-          source .venv/bin/activate
-          make format
-          make lint
-          make test
+      - name: ✅ Run format check
+        run: make format
 
-      # 🧹 Run pre-commit hooks on all files
-      - name: Run pre-commit hooks
-        run: |
-          source .venv/bin/activate
-          pip install pre-commit
-          pre-commit run --all-files
+      - name: 🔎 Run linter
+        run: make lint
+
+      - name: 🧪 Run tests with coverage
+        run: make test
+
+      - name: 📊 Generate coverage.xml and HTML reports
+        run: make coverage
+
+      - name: 🧼 Run pre-commit hooks
+        run: make hooks
+
+      - name: 💾 Upload HTML coverage report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: htmlcov

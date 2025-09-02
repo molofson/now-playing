@@ -1,6 +1,28 @@
-black
-flake8
-pytest
-isort
-pre-commit
-pytest-cov
+# -----------------------------
+# Formatting tools
+# -----------------------------
+black             # Code formatter
+isort             # Import sorter
+
+# -----------------------------
+# Linting tools
+# -----------------------------
+flake8            # Style guide enforcement
+flake8-bugbear    # Extra flake8 checks for likely bugs
+
+# -----------------------------
+# Testing and coverage
+# -----------------------------
+pytest            # Test runner
+coverage          # Core coverage measurement tool
+pytest-cov        # Pytest plugin to combine with coverage
+
+# -----------------------------
+# Git and pre-commit hooks
+# -----------------------------
+pre-commit        # Hook manager for code quality automation
+
+# -----------------------------
+# Optional changelog automation
+# -----------------------------
+git-cliff         # Conventional commit-based changelog generator

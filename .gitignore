@@ -3,6 +3,8 @@
 *.py[cod]
 *.tmp
 .coverage
+coverage.xml
+htmlcov/
 .devcontainer/.env
 .pytest_cache/
 .venv/
