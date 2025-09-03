@@ -25,4 +25,4 @@ pre-commit        # Hook manager for code quality automation
 # -----------------------------
 # Optional changelog automation
 # -----------------------------
-git-cliff         # Conventional commit-based changelog generator
+#git-cliff        # Conventional commit-based changelog generator

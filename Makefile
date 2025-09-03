@@ -56,6 +56,12 @@ pre-commit-install:
 	@echo "Installing pre-commit hook..."
 	@$(PRECOMMIT) install
 
+# ─── Preview Changelog ────────────────────────────────────────────────────
+preview-changelog:
+	@echo "Previewing unreleased changelog..."
+	@command -v git-cliff >/dev/null 2>&1 || { echo "git-cliff not found. Skipping."; exit 0; }
+	git-cliff --config ./cliff.toml --unreleased --stdout
+
 # ─── Install Dev Requirements ────────────────────────────────────────────
 install-dev:
 	@echo "Installing dev dependencies..."

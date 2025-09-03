@@ -65,3 +65,7 @@ jobs:
         with:
           name: coverage-html
           path: htmlcov
+
+      - name: 🧾 Preview changelog (PRs only)
+        if: github.event_name == 'pull_request'
+        run: make preview-changelog
