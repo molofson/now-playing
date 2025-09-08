@@ -2,6 +2,7 @@
 Shairport-sync metadata capture and replay system for debugging.
 """
 
+import gzip
 import json
 import time
 from pathlib import Path
@@ -156,7 +157,7 @@ class MetadataReplay:
         Initialize replay from captured file.
 
         Args:
-            capture_file: Path to captured metadata file
+            capture_file: Path to captured metadata file (supports .gz compression)
             fast_forward_gaps: Whether to fast-forward through idle periods
             max_gap_seconds: Maximum gap to preserve in real-time (larger gaps are fast-forwarded)
         """
@@ -170,6 +171,26 @@ class MetadataReplay:
 
         log.info("Metadata replay initialized: %s", self._capture_file)
 
+    def _is_gzipped(self) -> bool:
+        """Check if the capture file is gzipped."""
+        # First check by extension
+        if self._capture_file.suffix.lower() == ".gz":
+            return True
+
+        # Also check by reading the magic bytes
+        try:
+            with open(self._capture_file, "rb") as f:
+                return f.read(2) == b"\x1f\x8b"
+        except Exception:
+            return False
+
+    def _open_file(self, mode: str = "r"):
+        """Open the capture file, handling both regular and gzipped files."""
+        if self._is_gzipped():
+            return gzip.open(self._capture_file, mode + "t", encoding="utf-8")
+        else:
+            return open(self._capture_file, mode, encoding="utf-8")
+
     def replay(
         self, line_callback: Callable[[str], None], event_callback: Optional[Callable[[str, str, float], None]] = None
     ) -> None:
@@ -181,7 +202,7 @@ class MetadataReplay:
             event_callback: Optional function to call for events (type, description, timestamp)
         """
         try:
-            with open(self._capture_file, "r", encoding="utf-8") as f:
+            with self._open_file() as f:
                 self._replay_from_file(f, line_callback, event_callback)
         except Exception as e:
             log.error("Error during replay: %s", e)
@@ -272,6 +293,7 @@ class MetadataReplay:
         info: dict = {
             "file_path": str(self._capture_file),
             "file_size": int(self._capture_file.stat().st_size) if self._capture_file.exists() else 0,
+            "compressed": self._is_gzipped(),
             "line_count": 0,
             "event_count": 0,
             "duration": 0.0,
@@ -280,7 +302,7 @@ class MetadataReplay:
         }
 
         try:
-            with open(self._capture_file, "r", encoding="utf-8") as f:
+            with self._open_file() as f:
                 for line in f:
                     line = line.strip()
                     if not line:

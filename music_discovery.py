@@ -49,6 +49,7 @@ project_root = os.path.dirname(script_dir)  # noqa: E402
 if project_root not in sys.path:  # noqa: E402
     sys.path.insert(0, project_root)  # noqa: E402
 
+from nowplaying.capture_replay import MetadataReplay  # noqa: E402
 from nowplaying.config import AppConfig  # noqa: E402
 from nowplaying.content_panels import CoverArtPanel, DebugPanel, NowPlayingPanel, VUMeterPanel  # noqa: E402
 from nowplaying.enrichment_services import EnrichmentRequest, enrichment_engine  # noqa: E402
@@ -61,19 +62,32 @@ from nowplaying.playback_state import PlaybackState  # noqa: E402
 class DiscoveryApp:
     """Main music discovery application."""
 
-    def __init__(self, config: AppConfig, display_mode: str = "kiosk"):
+    def __init__(
+        self,
+        config: AppConfig,
+        display_mode: str = "kiosk",
+        capture_file: Optional[str] = None,
+        replay_file: Optional[str] = None,
+    ):
         """Initialize the discovery application.
 
         Args:
             config: Application configuration
             display_mode: Display mode - 'kiosk', 'windowed', or 'fullscreen'
+            capture_file: Optional file to capture metadata to
+            replay_file: Optional file to replay metadata from
         """
         self.config = config
         self.display_mode = display_mode
+        self.capture_file = capture_file
+        self.replay_file = replay_file
 
         # Core components
         self.monitor: Optional[StateMonitor] = None
         self.navigator = PanelNavigator()
+
+        # Replay component (capture handled by StateMonitor)
+        self.replay: Optional[MetadataReplay] = None
 
         # Display
         self.screen: Optional[pygame.Surface] = None
@@ -174,11 +188,52 @@ class DiscoveryApp:
     def initialize_monitor(self) -> bool:
         """Initialize metadata monitor."""
         try:
-            self.monitor = StateMonitor(
-                config=self.config.state_monitor, metadata_callback=self._on_metadata, state_callback=self._on_state
-            )
+            if self.replay_file:
+                # Use replay mode for testing
+                replay = MetadataReplay(self.replay_file, fast_forward_gaps=True)
+                self.replay = replay
 
-            self.monitor.start()
+                # Create a metadata reader to process replayed lines
+                from nowplaying.metadata_reader import ShairportSyncPipeReader
+
+                reader = ShairportSyncPipeReader(state_callback=self._on_state, metadata_callback=self._on_metadata)
+
+                # Setup replay callbacks
+                def line_callback(line: str) -> None:
+                    reader.process_line(line)
+
+                def event_callback(event_type: str, description: str, timestamp: float) -> None:
+                    self.logger.debug(f"Replay event [{timestamp:.2f}s]: {event_type} - {description}")
+
+                # Start replay in a separate thread
+                import threading
+
+                def start_replay():
+                    try:
+                        replay.replay(line_callback, event_callback)
+                        self.logger.info("Replay completed")
+                    except Exception as e:
+                        self.logger.error(f"Replay error: {e}")
+
+                replay_thread = threading.Thread(target=start_replay, daemon=True)
+                replay_thread.start()
+
+                self.logger.info(f"Started replay from: {self.replay_file}")
+
+            else:
+                # Normal monitoring mode, with optional capture
+                self.monitor = StateMonitor(
+                    config=self.config.state_monitor,
+                    metadata_callback=self._on_metadata,
+                    state_callback=self._on_state,
+                    capture_file=self.capture_file,  # Pass capture file to StateMonitor
+                )
+
+                if self.capture_file:
+                    self.logger.info(f"Started capture to: {self.capture_file}")
+
+                self.monitor.start()
+
             self.logger.info("Metadata monitor started")
             return True
 
@@ -358,6 +413,14 @@ class DiscoveryApp:
             except Exception as e:
                 self.logger.warning("Error stopping monitor: %s", e)
 
+        # Cleanup replay if in replay mode
+        if hasattr(self, "replay") and self.replay:
+            try:
+                self.replay.stop()
+                self.logger.info("Metadata replay stopped")
+            except Exception as e:
+                self.logger.warning("Error stopping replay: %s", e)
+
         # Shutdown enrichment engine
         try:
             enrichment_engine.shutdown()
@@ -413,6 +476,8 @@ def main():
     parser.add_argument("--fullscreen", action="store_true", help="Run in fullscreen mode")
     parser.add_argument("--kiosk", action="store_true", help="Run in kiosk mode (fullscreen, hides taskbars, default)")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument("--capture", help="Capture metadata to file for testing/replay")
+    parser.add_argument("--replay", help="Replay metadata from file with fast-forward (supports .gz compression)")
 
     args = parser.parse_args()
 
@@ -435,7 +500,7 @@ def main():
         config.log_level = "DEBUG"
 
     # Create and run application
-    app = DiscoveryApp(config, display_mode=display_mode)
+    app = DiscoveryApp(config, display_mode=display_mode, capture_file=args.capture, replay_file=args.replay)
     try:
         app.run()
     except KeyboardInterrupt:
