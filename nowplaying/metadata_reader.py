@@ -6,6 +6,7 @@ import base64
 import hashlib
 import re
 import struct
+import uuid
 from typing import Callable, Dict
 
 from .module_registry import module_registry
@@ -63,6 +64,8 @@ class ShairportSyncPipeReader:
         self._metadata_callback = metadata_callback
         self._current_metadata: Dict[str, str] = {}
         self._metadata_bundle_active = False
+        self._sequence_number = 0
+        self._current_metadata_id = None
 
         # Core metadata codes from iTunes/AirPlay (DMAP format)
         self._core_metadata_codes = {
@@ -513,12 +516,22 @@ class ShairportSyncPipeReader:
         log.debug("Metadata bundle start")
         self._metadata_bundle_active = True
         self._current_metadata.clear()
+
+        # Create new metadata ID and increment sequence number
+        self._current_metadata_id = str(uuid.uuid4())
+        self._sequence_number += 1
+
+        # Initialize metadata structure with ID and sequence
+        self._current_metadata["metadata_id"] = self._current_metadata_id
+        self._current_metadata["sequence_number"] = str(self._sequence_number)
+
         # Payload contains RTP timestamp if available
         if payload:
             try:
                 # RTP timestamp is typically a hex string
                 rtp_timestamp = payload.decode("ascii").strip()
                 log.debug("Metadata RTP timestamp: %s", rtp_timestamp)
+                self._current_metadata["rtp_timestamp"] = rtp_timestamp
             except UnicodeDecodeError:
                 pass
 
@@ -531,7 +544,7 @@ class ShairportSyncPipeReader:
             self._metadata_callback(self._current_metadata.copy())
 
         self._metadata_bundle_active = False
-        self._current_metadata.clear()
+        # Don't clear current_metadata here - preserve it for cover art updates
 
         # Payload contains RTP timestamp if available - log it if present
         if payload:
@@ -628,9 +641,16 @@ class ShairportSyncPipeReader:
         # Check if file already exists with same checksum - avoid regenerating
         if os.path.exists(filename):
             log.debug("Cover art already exists: %s", filename)
-            # Add cover art path to current metadata and trigger callback
-            self._current_metadata["cover_art_path"] = filename
-            self._metadata_callback(self._current_metadata.copy())
+            # Only update cover art path in current metadata if we have a complete metadata bundle
+            if self._current_metadata and self._current_metadata_id:
+                # Increment sequence number for cover art update
+                self._sequence_number += 1
+                self._current_metadata["sequence_number"] = str(self._sequence_number)
+                self._current_metadata["cover_art_path"] = filename
+                log.info("Dispatching metadata with existing cover art: %s", self._current_metadata)
+                self._metadata_callback(self._current_metadata.copy())
+            else:
+                log.debug("No current metadata to update with existing cover art path")
             return
 
         try:
@@ -638,9 +658,16 @@ class ShairportSyncPipeReader:
                 f.write(payload)
             log.info("Cover art saved to: %s", filename)
 
-            # Add cover art path to current metadata and trigger callback
-            self._current_metadata["cover_art_path"] = filename
-            self._metadata_callback(self._current_metadata.copy())
+            # Only update metadata if we have a complete bundle
+            if self._current_metadata and self._current_metadata_id:
+                # Increment sequence number for cover art update
+                self._sequence_number += 1
+                self._current_metadata["sequence_number"] = str(self._sequence_number)
+                self._current_metadata["cover_art_path"] = filename
+                log.info("Dispatching metadata with cover art: %s", self._current_metadata)
+                self._metadata_callback(self._current_metadata.copy())
+            else:
+                log.debug("No current metadata to update with cover art path")
 
         except Exception as e:
             log.error("Failed to save cover art: %s", e)

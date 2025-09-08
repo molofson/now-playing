@@ -6,6 +6,7 @@ import logging
 import select
 import sys
 import threading
+import uuid
 from typing import Callable, Optional
 
 from .capture_replay import MetadataCapture
@@ -263,7 +264,15 @@ class StateMonitor:
     def _clear_metadata_for_session_end(self) -> None:
         """Clear metadata when a session ends (NO_SESSION state)."""
         log_metadata.info("Clearing metadata for session end")
-        empty_metadata = {"artist": "", "album": "", "title": "", "genre": "", "cover_art_path": None}
+        empty_metadata = {
+            "metadata_id": str(uuid.uuid4()),
+            "sequence_number": "0",
+            "artist": "",
+            "album": "",
+            "title": "",
+            "genre": "",
+            "cover_art_path": None,
+        }
         self._metadata_callback(empty_metadata)
 
     def _default_metadata_callback(self, metadata: dict) -> None:
