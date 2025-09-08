@@ -1,0 +1,114 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "now-playing"
+version = "0.1.0"
+description = "AirPlay metadata display for shairport-sync"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "molofson", email = "molofson@example.com"},
+]
+keywords = ["airplay", "shairport-sync", "metadata", "display", "audio"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: System :: Monitoring",
+]
+dependencies = [
+    "pygame>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov>=3.0",
+    "black>=22.0",
+    "isort>=5.0",
+    "flake8>=4.0",
+    "flake8-bugbear>=22.0",
+    "flake8-unused-arguments>=0.0.13",
+    "flake8-import-order>=0.18.1",
+    "flake8-comprehensions>=3.10.0",
+    "flake8-simplify>=0.19.0",
+    "flake8-eradicate>=1.4.0",
+    "flake8-docstrings>=1.6.0",
+    "vulture>=2.7",
+    "mypy>=1.0",
+    "pre-commit>=2.0",
+]
+
+[project.scripts]
+nowplaying-display = "nowplaying.cli:display_main"
+nowplaying-test = "nowplaying.cli:test_main"
+
+[project.urls]
+Homepage = "https://github.com/molofson/now-playing"
+Repository = "https://github.com/molofson/now-playing.git"
+Issues = "https://github.com/molofson/now-playing/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nowplaying*"]
+
+[tool.setuptools.package-data]
+nowplaying = ["*.txt", "*.md"]
+
+[tool.black]
+line-length = 120
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 120
+known_first_party = ["nowplaying"]
+known_third_party = ["pygame", "pytest"]
+
+[tool.vulture]
+exclude = ["tests/", "build/", ".venv/", "__pycache__/"]
+ignore_decorators = ["@pytest.fixture", "@patch", "@Mock"]
+ignore_names = ["_*", "test_*", "setup_method", "teardown_method", "frame", "signum"]
+min_confidence = 80
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false  # Start very lenient
+warn_unused_configs = true
+disallow_untyped_defs = false  # Start lenient, can tighten later
+ignore_missing_imports = true
+exclude = ["tests/", "setup.py"]
+# Allow some common patterns
+disable_error_code = ["assignment", "arg-type", "attr-defined", "var-annotated"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra -q --cov=nowplaying --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["nowplaying"]
+omit = ["tests/*", "setup.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+]

@@ -9,13 +9,22 @@ isort             # Import sorter
 # -----------------------------
 flake8            # Style guide enforcement
 flake8-bugbear    # Extra flake8 checks for likely bugs
+flake8-unused-arguments  # Catches unused function arguments
+flake8-import-order      # Import organization checks
+flake8-comprehensions    # Better list/dict comprehensions
+flake8-simplify          # Suggests code simplifications
+flake8-eradicate         # Finds commented-out code
+flake8-docstrings        # Docstring checks
+vulture                  # Dead code detection
+mypy                     # Static type checking
 
 # -----------------------------
 # Testing and coverage
 # -----------------------------
 pytest            # Test runner
 coverage          # Core coverage measurement tool
-pytest-cov        # Pytest plugin to combine with coverage
+pytest-cov       # Pytest plugin to combine with coverage
+pygame
 
 # -----------------------------
 # Git and pre-commit hooks
