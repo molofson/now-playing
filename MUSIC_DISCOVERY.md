@@ -99,6 +99,12 @@ class MyPanel(ContentPanel):
 
 ### Common Issues
 
+**Virtual keyboard overlay**: If you see a virtual keyboard on top of the application:
+- Use the launcher script: `./run_discovery.sh` (includes automatic suppression)
+- Manually disable: Check your system's accessibility settings
+- GNOME: `gsettings set org.gnome.desktop.a11y.applications screen-keyboard-enabled false`
+- KDE: Disable virtual keyboard in System Settings > Input Devices
+
 **No display window**: Ensure you have X11 or Wayland display server running
 **Import errors**: Run `make install-dev` to install dependencies
 **Permission errors**: Ensure the virtual environment is activated

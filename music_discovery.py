@@ -6,7 +6,9 @@ A swipeable interface for exploring music content with enriched metadata
 from external services. Supports user-extensible panels and plugins.
 
 Usage:
-    python3 music_discovery.py [--config CONFIG_FILE] [--windowed] [--fullscreen]
+    python3 music_discovery.py [--windowed] [--fullscreen] [--kiosk] [--debug]
+
+Default mode is kiosk (no window decorations).
 """
 
 import argparse
@@ -25,6 +27,19 @@ os.environ["PYGAME_DETECT_AVX2"] = "0"
 # Suppress xkbcommon locale errors
 os.environ["XKB_DEFAULT_LAYOUT"] = "us"
 os.environ["LC_ALL"] = "C.UTF-8"
+
+# Disable virtual keyboard and touch interfaces
+os.environ["SDL_DISABLE_TOUCH"] = "1"
+os.environ["SDL_DISABLE_GESTURE"] = "1"
+os.environ["SDL_TEXTINPUT"] = "0"
+os.environ["SDL_IM_MODULE"] = ""
+os.environ["QT_IM_MODULE"] = "none"
+os.environ["GTK_IM_MODULE"] = "none"
+os.environ["XMODIFIERS"] = ""
+
+# Additional kiosk mode settings
+os.environ["SDL_VIDEO_WINDOW_POS"] = "0,0"
+os.environ["SDL_VIDEO_CENTERED"] = "0"
 
 import pygame
 
@@ -46,10 +61,15 @@ from nowplaying.playback_state import PlaybackState
 class DiscoveryApp:
     """Main music discovery application."""
 
-    def __init__(self, config: AppConfig, windowed: bool = False):
-        """Initialize the discovery application."""
+    def __init__(self, config: AppConfig, display_mode: str = "kiosk"):
+        """Initialize the discovery application.
+
+        Args:
+            config: Application configuration
+            display_mode: Display mode - 'kiosk', 'windowed', or 'fullscreen'
+        """
         self.config = config
-        self.windowed = windowed
+        self.display_mode = display_mode
 
         # Core components
         self.monitor: Optional[StateMonitor] = None
@@ -113,18 +133,38 @@ class DiscoveryApp:
             with redirect_stderr(stderr_buffer):
                 pygame.init()
 
-            if self.windowed:
+            # Disable text input to prevent virtual keyboard
+            pygame.key.set_repeat()
+
+            if self.display_mode == "windowed":
                 self.screen = pygame.display.set_mode((1200, 800))
                 pygame.display.set_caption("Music Discovery")
-            else:
-                # Fullscreen
+            elif self.display_mode == "fullscreen":
                 self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+            else:  # kiosk mode (default) - true fullscreen without decorations
+                # Get the current desktop resolution
+                info = pygame.display.Info()
+                width, height = info.current_w, info.current_h
+                # Use fullscreen mode to take over the entire screen and hide taskbars
+                self.screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN | pygame.NOFRAME)
+                pygame.display.set_caption("Music Discovery")
 
-            # Hide mouse cursor in fullscreen
-            if not self.windowed:
+            # Hide mouse cursor in fullscreen and kiosk modes
+            if self.display_mode != "windowed":
                 pygame.mouse.set_visible(False)
 
-            self.logger.info("Display initialized: %dx%d", self.screen.get_width(), self.screen.get_height())
+            # Disable text input events completely
+            pygame.key.stop_text_input()
+
+            # Additional pygame keyboard settings
+            pygame.key.set_repeat(0)  # Disable key repeat completely
+
+            self.logger.info(
+                "Display initialized: %dx%d (%s mode)",
+                self.screen.get_width(),
+                self.screen.get_height(),
+                self.display_mode,
+            )
             return True
 
         except Exception as e:
@@ -195,23 +235,34 @@ class DiscoveryApp:
                 elif event.key == pygame.K_F11:
                     self._toggle_fullscreen()
 
+            # Filter out text input events to prevent virtual keyboard
+            elif event.type == pygame.TEXTINPUT or event.type == pygame.TEXTEDITING:
+                continue
+
             # Let navigator handle navigation events
             self.navigator.handle_event(event)
 
         return True
 
     def _toggle_fullscreen(self):
-        """Toggle between windowed and fullscreen mode."""
-        self.windowed = not self.windowed
-
-        if self.windowed:
-            self.screen = pygame.display.set_mode((1200, 800))
-            pygame.mouse.set_visible(True)
-        else:
+        """Toggle between display modes."""
+        if self.display_mode == "windowed":
+            self.display_mode = "kiosk"
+            # Kiosk mode: fullscreen that covers everything including taskbars
+            info = pygame.display.Info()
+            width, height = info.current_w, info.current_h
+            self.screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN | pygame.NOFRAME)
+            pygame.mouse.set_visible(False)
+        elif self.display_mode == "kiosk":
+            self.display_mode = "fullscreen"
             self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
             pygame.mouse.set_visible(False)
+        else:  # fullscreen
+            self.display_mode = "windowed"
+            self.screen = pygame.display.set_mode((1200, 800))
+            pygame.mouse.set_visible(True)
 
-        self.logger.info("Toggled to %s mode", "windowed" if self.windowed else "fullscreen")
+        self.logger.info("Toggled to %s mode", self.display_mode)
 
     def render(self) -> None:
         """Render the current frame."""
@@ -358,11 +409,20 @@ def main():
     """Main entry point for the music discovery application."""
     parser = argparse.ArgumentParser(description="Music Discovery Interface")
     parser.add_argument("--config", help="Path to config file")
-    parser.add_argument("--windowed", action="store_true", help="Run in windowed mode")
+    parser.add_argument("--windowed", action="store_true", help="Run in windowed mode (with decorations)")
     parser.add_argument("--fullscreen", action="store_true", help="Run in fullscreen mode")
+    parser.add_argument("--kiosk", action="store_true", help="Run in kiosk mode (fullscreen, hides taskbars, default)")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()
+
+    # Determine display mode
+    if args.windowed:
+        display_mode = "windowed"
+    elif args.fullscreen:
+        display_mode = "fullscreen"
+    else:
+        display_mode = "kiosk"  # Default mode
 
     # Setup logging
     log_level = logging.DEBUG if args.debug else logging.INFO
@@ -375,7 +435,7 @@ def main():
         config.log_level = "DEBUG"
 
     # Create and run application
-    app = DiscoveryApp(config, windowed=args.windowed)
+    app = DiscoveryApp(config, display_mode=display_mode)
     try:
         app.run()
     except KeyboardInterrupt:
