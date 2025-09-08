@@ -14,11 +14,17 @@ import logging
 import os
 import signal
 import sys
+from contextlib import redirect_stderr
+from io import StringIO
 from typing import Any, Dict, Optional
 
-# Suppress pygame startup messages
+# Suppress pygame startup messages and system warnings
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 os.environ["PYGAME_DETECT_AVX2"] = "0"
+
+# Suppress xkbcommon locale errors
+os.environ["XKB_DEFAULT_LAYOUT"] = "us"
+os.environ["LC_ALL"] = "C.UTF-8"
 
 import pygame
 
@@ -101,7 +107,11 @@ class DiscoveryApp:
     def initialize_display(self) -> bool:
         """Initialize pygame display."""
         try:
-            pygame.init()
+            # Redirect stderr temporarily to suppress pygame initialization messages
+            stderr_buffer = StringIO()
+
+            with redirect_stderr(stderr_buffer):
+                pygame.init()
 
             if self.windowed:
                 self.screen = pygame.display.set_mode((1200, 800))
@@ -304,15 +314,28 @@ class DiscoveryApp:
         except Exception as e:
             self.logger.warning("Error shutting down enrichment engine: %s", e)
 
-        # Quit pygame
+        # Quit pygame with proper cleanup and suppress warnings
         try:
-            pygame.quit()
+            # Clear any remaining surfaces
+            if hasattr(self, "screen") and self.screen:
+                self.screen.fill((0, 0, 0))
+                pygame.display.flip()
+
+            # Redirect stderr to suppress Wayland warnings during cleanup
+            stderr_buffer = StringIO()
+            with redirect_stderr(stderr_buffer):
+                # Properly quit pygame modules
+                pygame.mixer.quit()
+                pygame.font.quit()
+                pygame.display.quit()
+                pygame.quit()
+
             self.logger.info("Pygame shutdown complete")
         except Exception as e:
             self.logger.warning("Error during pygame shutdown: %s", e)
 
 
-def load_user_panels(config: AppConfig) -> None:
+def load_user_panels(_config: AppConfig) -> None:
     """Load user-defined panels from config or plugins directory."""
     # This would implement plugin loading
     # For now, just log that it would happen
@@ -335,26 +358,21 @@ def main():
     """Main entry point for the music discovery application."""
     parser = argparse.ArgumentParser(description="Music Discovery Interface")
     parser.add_argument("--config", help="Path to config file")
-    parser.add_argument(
-        "--windowed", action="store_true", help="Run in windowed mode"
-    )
-    parser.add_argument(
-        "--fullscreen", action="store_true", help="Run in fullscreen mode"
-    )
-    parser.add_argument(
-        "--debug", action="store_true", help="Enable debug logging"
-    )
+    parser.add_argument("--windowed", action="store_true", help="Run in windowed mode")
+    parser.add_argument("--fullscreen", action="store_true", help="Run in fullscreen mode")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()
 
     # Setup logging
     log_level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(
-        level=log_level, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=log_level, format="%(asctime)s - %(levelname)s - %(message)s")
 
     # Load configuration
-    config = AppConfig(config_file=args.config)
+    config = AppConfig.create_default()
+    if args.debug:
+        config.debug = True
+        config.log_level = "DEBUG"
 
     # Create and run application
     app = DiscoveryApp(config, windowed=args.windowed)
