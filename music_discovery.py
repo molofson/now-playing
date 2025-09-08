@@ -41,21 +41,21 @@ os.environ["XMODIFIERS"] = ""
 os.environ["SDL_VIDEO_WINDOW_POS"] = "0,0"
 os.environ["SDL_VIDEO_CENTERED"] = "0"
 
-import pygame
+import pygame  # noqa: E402
 
 # Add project root to path
-script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(script_dir)
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+script_dir = os.path.dirname(os.path.abspath(__file__))  # noqa: E402
+project_root = os.path.dirname(script_dir)  # noqa: E402
+if project_root not in sys.path:  # noqa: E402
+    sys.path.insert(0, project_root)  # noqa: E402
 
-from nowplaying.config import AppConfig
-from nowplaying.content_panels import CoverArtPanel, DebugPanel, NowPlayingPanel, VUMeterPanel
-from nowplaying.enrichment_services import EnrichmentRequest, enrichment_engine
-from nowplaying.metadata_monitor import StateMonitor
-from nowplaying.music_views import ContentContext, content_panel_registry
-from nowplaying.panel_navigator import PanelNavigator
-from nowplaying.playback_state import PlaybackState
+from nowplaying.config import AppConfig  # noqa: E402
+from nowplaying.content_panels import CoverArtPanel, DebugPanel, NowPlayingPanel, VUMeterPanel  # noqa: E402
+from nowplaying.enrichment_services import EnrichmentRequest, enrichment_engine  # noqa: E402
+from nowplaying.metadata_monitor import StateMonitor  # noqa: E402
+from nowplaying.music_views import ContentContext, content_panel_registry  # noqa: E402
+from nowplaying.panel_navigator import PanelNavigator  # noqa: E402
+from nowplaying.playback_state import PlaybackState  # noqa: E402
 
 
 class DiscoveryApp:
@@ -386,7 +386,7 @@ class DiscoveryApp:
             self.logger.warning("Error during pygame shutdown: %s", e)
 
 
-def load_user_panels(_config: AppConfig) -> None:
+def load_user_panels(config: AppConfig) -> None:  # noqa: U100
     """Load user-defined panels from config or plugins directory."""
     # This would implement plugin loading
     # For now, just log that it would happen
@@ -397,7 +397,7 @@ def load_user_panels(_config: AppConfig) -> None:
 def setup_signal_handlers(app: DiscoveryApp) -> None:
     """Setup signal handlers for graceful shutdown."""
 
-    def signal_handler(signum, _frame):
+    def signal_handler(signum, frame):  # noqa: U100
         logging.getLogger("discovery").info("Received signal %d, shutting down", signum)
         app.running = False
 
