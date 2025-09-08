@@ -148,6 +148,10 @@ class StateMonitor:
             log_state.info("State transition: %s -> %s (%s)", current_state, new_state, reason)
             self._state_callback(new_state)
 
+            # Clear metadata when session ends completely
+            if new_state == PlaybackState.NO_SESSION:
+                self._clear_metadata_for_session_end()
+
         # Start waiting timer for certain states
         self._start_waiting_timer_if_needed(new_state)
 
@@ -249,8 +253,18 @@ class StateMonitor:
             if new_state != current_state:
                 self._state_callback(new_state)
 
+                # Clear metadata when session ends completely
+                if new_state == PlaybackState.NO_SESSION:
+                    self._clear_metadata_for_session_end()
+
             # Start waiting timer for certain states
             self._start_waiting_timer_if_needed(new_state)
+
+    def _clear_metadata_for_session_end(self) -> None:
+        """Clear metadata when a session ends (NO_SESSION state)."""
+        log_metadata.info("Clearing metadata for session end")
+        empty_metadata = {"artist": "", "album": "", "title": "", "genre": "", "cover_art_path": None}
+        self._metadata_callback(empty_metadata)
 
     def _default_metadata_callback(self, metadata: dict) -> None:
         """Default metadata callback that logs published metadata."""
