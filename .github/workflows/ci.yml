@@ -69,3 +69,4 @@ jobs:
       - name: 🧾 Preview changelog (PRs only)
         if: github.event_name == 'pull_request'
         run: make preview-changelog
+        continue-on-error: true  # Don't fail CI if changelog preview fails

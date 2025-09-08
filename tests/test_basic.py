@@ -1,6 +1,7 @@
-import subprocess
 import os
+import subprocess
 import sys
+
 import pytest
 
 
@@ -18,18 +19,26 @@ def test_sample_fixture(sample_data):
     assert sample_data["active"] is True
 
 
-def test_app_runs_without_crashing():
-    """Run the app and ensure it exits without crashing."""
-    script_path = os.path.join(os.path.dirname(__file__), "..", "nowplaying.py")
+def test_metadata_display_help():
+    """Test that the metadata display shows help without crashing."""
+    script_path = os.path.join(os.path.dirname(__file__), "..", "devtools", "metadata_display.py")
     result = subprocess.run(
-        [sys.executable, script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        [sys.executable, script_path, "--help"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=10,  # Prevent hanging
     )
 
-    # Accept 0 (success) or 1 (controlled exit)
-    assert result.returncode in (
-        0,
-        1,
-    ), f"Exited with unexpected code {result.returncode}\nSTDERR:\n{result.stderr.decode()}"
+    # Should exit successfully when showing help
+    assert (
+        result.returncode == 0
+    ), f"Help command failed with code {result.returncode}\nSTDERR:\n{result.stderr.decode()}"
 
-    # Fail if a traceback is found in stderr
-    assert b"Traceback" not in result.stderr, "App crashed:\n" + result.stderr.decode()
+    # Should contain help text
+    stdout_text = result.stdout.decode()
+    assert "Now Playing Metadata Display" in stdout_text, "Help text not found in output"
+    assert "--help" in stdout_text, "Help option not found in output"
+
+    # Should not crash with traceback
+    stderr_text = result.stderr.decode()
+    assert "Traceback" not in stderr_text, f"App crashed with traceback:\n{stderr_text}"

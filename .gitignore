@@ -10,3 +10,12 @@ htmlcov/
 .venv/
 .vscode/
 __pycache__/
+
+# Package build artifacts
+build/
+dist/
+*.egg-info/
+
+# Virtual environments that shouldn't be tracked
+activate/
+activaate/
