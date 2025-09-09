@@ -92,8 +92,14 @@ class TestShairportSyncPipeReaderExtended:
         jpeg_data = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb\x00C\x00"
         encoded_data = base64.b64encode(jpeg_data).decode()
 
-        # Set up album metadata first
-        self.reader._current_metadata = {"album": "Test Album"}
+        # Start a metadata bundle to provide context for cover art
+        self.reader.process_line("<item><type>73736e63</type><code>6d647374</code><length>0</length></item>")
+
+        # Set up album metadata
+        album_data = base64.b64encode(b"Test Album").decode()
+        self.reader.process_line(
+            f'<item><type>636f7265</type><code>6173616c</code><length>10</length><data encoding="base64">{album_data}</data></item>'
+        )
 
         # Send PICT data
         xml_line = f'<item><type>73736e63</type><code>50494354</code><length>{len(jpeg_data)}</length><data encoding="base64">{encoded_data}</data></item>'
@@ -387,7 +393,12 @@ class TestShairportSyncPipeReaderExtended:
         jpeg_data = b"\xff\xd8\xff\xe0test"
         encoded_data = base64.b64encode(jpeg_data).decode()
 
-        self.reader._current_metadata = {"album": "Test Album"}
+        # Start a metadata bundle and add album info
+        self.reader.process_line("<item><type>73736e63</type><code>6d647374</code><length>0</length></item>")
+        album_data = base64.b64encode(b"Test Album").decode()
+        self.reader.process_line(
+            f'<item><type>636f7265</type><code>6173616c</code><length>10</length><data encoding="base64">{album_data}</data></item>'
+        )
 
         xml_line = f'<item><type>73736e63</type><code>50494354</code><length>{len(jpeg_data)}</length><data encoding="base64">{encoded_data}</data></item>'
 
