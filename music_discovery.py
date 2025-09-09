@@ -51,11 +51,17 @@ if project_root not in sys.path:  # noqa: E402
 
 from nowplaying.capture_replay import MetadataReplay  # noqa: E402
 from nowplaying.config import AppConfig  # noqa: E402
-from nowplaying.content_panels import CoverArtPanel, DebugPanel, NowPlayingPanel, VUMeterPanel  # noqa: E402
-from nowplaying.enrichment_services import EnrichmentRequest, enrichment_engine  # noqa: E402
+from nowplaying.enrichment import EnrichmentRequest, enrichment_engine  # noqa: E402
 from nowplaying.metadata_monitor import StateMonitor  # noqa: E402
-from nowplaying.music_views import ContentContext, content_panel_registry  # noqa: E402
+from nowplaying.music_views import ContentContext  # noqa: E402
 from nowplaying.panel_navigator import PanelNavigator  # noqa: E402
+from nowplaying.panels import (  # noqa: E402
+    CoverArtPanel,
+    DebugPanel,
+    NowPlayingPanel,
+    VUMeterPanel,
+    content_panel_registry,
+)
 from nowplaying.playback_state import PlaybackState  # noqa: E402
 
 

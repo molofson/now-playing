@@ -63,8 +63,8 @@ The application is built on a modular ContentPanel architecture:
 
 - **`music_discovery.py`** - Main application with pygame interface
 - **`nowplaying/music_views.py`** - Core ContentPanel interfaces and registry
-- **`nowplaying/content_panels.py`** - Built-in panel implementations
-- **`nowplaying/enrichment_services.py`** - Metadata enrichment framework
+- **`nowplaying/panels/`** - Content panels package with base classes and built-in implementations
+- **`nowplaying/enrichment/`** - Metadata enrichment services package
 - **`nowplaying/panel_navigator.py`** - Swipe navigation controller
 - **`nowplaying/plugin_system.py`** - User plugin loading system
 

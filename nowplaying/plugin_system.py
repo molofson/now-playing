@@ -1,7 +1,38 @@
 """
 Plugin system for user-extensible content panels and enrichment services.
 
-This module provides a framework for loading and managing user-defined
+This module provides a framework for loading and        # Look for content pa        # Look for enrichment service classes
+        for name, obj in inspect.getmembers(module, inspect.isclass):
+            if issubclass(obj, EnrichmentService) and obj != EnrichmentService:
+                try:
+                    # Skip abstract base classes that can't be instantiated
+                    if getattr(obj, "__abstractmethods__", None):
+                        continue
+                    # Skip importing base classes from our own modules
+                    if obj.__module__.startswith('nowplaying.enrichment.base'):
+                        continue
+                    service_instance = obj()  # type: ignore[call-arg]
+                    enrichment_engine.register_service(service_instance)
+                    plugin_info["services"].append(service_instance.service_id)
+                    self.logger.debug(
+                        "Registered enrichment service: %s from plugin %s", service_instance.service_id, plugin_name
+                    )
+                except Exception as e:
+                    self.logger.error("Failed to register enrichment service %s: %s", name, e)     for name, obj in inspect.getmembers(module, inspect.isclass):
+            if issubclass(obj, ContentPanel) and obj != ContentPanel:
+                try:
+                    # Skip abstract base classes that can't be instantiated
+                    if getattr(obj, "__abstractmethods__", None):
+                        continue
+                    # Skip importing base classes from our own modules
+                    if obj.__module__.startswith('nowplaying.panels.base'):
+                        continue
+                    panel_instance = obj()  # type: ignore[call-arg]
+                    content_panel_registry.register_panel(panel_instance)
+                    plugin_info["panels"].append(panel_instance.info.id)
+                    self.logger.debug("Registered panel: %s from plugin %s", panel_instance.info.id, plugin_name)
+                except Exception as e:
+                    self.logger.error("Failed to register panel %s: %s", name, e)r-defined
 panels and enrichment services from external Python files or packages.
 """
 
@@ -12,8 +43,8 @@ import os
 import sys
 from typing import Any, Dict, List, Optional
 
-from .enrichment_services import EnrichmentService, enrichment_engine
-from .music_views import ContentPanel, content_panel_registry
+from .enrichment import EnrichmentService, enrichment_engine
+from .panels import ContentPanel, content_panel_registry
 
 
 class PluginLoader:
@@ -129,6 +160,9 @@ class PluginLoader:
         for name, obj in inspect.getmembers(module, inspect.isclass):
             if issubclass(obj, ContentPanel) and obj != ContentPanel:
                 try:
+                    # Skip abstract base classes that can't be instantiated
+                    if getattr(obj, "__abstractmethods__", None):
+                        continue
                     panel_instance = obj()
                     content_panel_registry.register_panel(panel_instance)
                     plugin_info["panels"].append(panel_instance.info.id)
@@ -140,6 +174,9 @@ class PluginLoader:
         for name, obj in inspect.getmembers(module, inspect.isclass):
             if issubclass(obj, EnrichmentService) and obj != EnrichmentService:
                 try:
+                    # Skip abstract base classes that can't be instantiated
+                    if getattr(obj, "__abstractmethods__", None):
+                        continue
                     service_instance = obj()
                     enrichment_engine.register_service(service_instance)
                     plugin_info["services"].append(service_instance.service_id)
@@ -193,142 +230,11 @@ class PluginLoader:
         return True
 
 
-# Example plugin template that users can copy
-EXAMPLE_PANEL_PLUGIN = '''"""
-Example content panel plugin.
-
-Copy this file to your plugins directory and modify to create custom panels.
-Location: ~/.config/music-discovery/plugins/my_panel.py
-"""
-
-import pygame
-from nowplaying.music_views import ContentPanel, PanelInfo, ContentContext
-
-
-class ExamplePanel(ContentPanel):
-    """Example custom content panel."""
-
-    def __init__(self):
-        info = PanelInfo(
-            id="example_panel",
-            name="Example Panel",
-            description="An example of a custom content panel",
-            icon="🎨",
-            category="custom",
-            requires_metadata=True
-        )
-        super().__init__(info)
-
-    def update_context(self, context: ContentContext) -> None:
-        """Update with new content context."""
-        self._context = context
-
-    def render(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
-        """Render the panel."""
-        if not self._context:
-            return
-
-        # Example rendering
-        font = pygame.font.Font(None, 24)
-
-        # Title
-        title = font.render("Custom Panel", True, (255, 255, 255))
-        surface.blit(title, (rect.x + 20, rect.y + 20))
-
-        # Artist info
-        if self._context.artist:
-            artist_text = f"Artist: {self._context.artist}"
-            artist_surface = font.render(artist_text, True, (200, 200, 200))
-            surface.blit(artist_surface, (rect.x + 20, rect.y + 60))
-
-        # Custom visualization here
-        pygame.draw.circle(surface, (100, 150, 255),
-                         (rect.centerx, rect.centery), 50, 3)
-
-    def handle_event(self, event: pygame.event.Event) -> bool:
-        """Handle events."""
-        # Custom event handling here
-        return False
-
-
-# Optional: Registration function for more complex setup
-def register_plugin():
-    """Called when plugin is loaded."""
-    print("Example plugin registered!")
-'''
-
-EXAMPLE_SERVICE_PLUGIN = '''"""
-Example enrichment service plugin.
-
-Copy this file to your plugins directory and modify to create custom services.
-Location: ~/.config/music-discovery/plugins/my_service.py
-"""
-
-import asyncio
-from nowplaying.enrichment_services import EnrichmentService, EnrichmentData, EnrichmentRequest
-
-
-class ExampleService(EnrichmentService):
-    """Example custom enrichment service."""
-
-    def __init__(self):
-        super().__init__("example_service", "Example Service", enabled=True)
-        self._rate_limit_delay = 2.0  # Be nice to APIs
-
-    async def enrich(self, request: EnrichmentRequest) -> EnrichmentData:
-        """Enrich metadata with custom data."""
-        if not self.can_enrich(request):
-            return None
-
-        await self._rate_limit()
-
-        try:
-            # Your custom enrichment logic here
-            # This could call external APIs, databases, etc.
-
-            enrichment = EnrichmentData()
-
-            # Example: add custom tags based on artist
-            if "rock" in request.artist.lower():
-                enrichment.artist_tags = ["rock", "guitar-driven"]
-
-            # Example: mock tour dates
-            enrichment.tour_dates = [
-                {"date": "2024-01-15", "venue": "Example Venue", "city": "Example City"}
-            ]
-
-            enrichment.last_updated["example_service"] = time.time()
-
-            return enrichment
-
-        except Exception as e:
-            self.logger.error("Example service failed: %s", e)
-            enrichment = EnrichmentData()
-            enrichment.service_errors["example_service"] = str(e)
-            return enrichment
-
-
-def register_plugin():
-    """Called when plugin is loaded."""
-    print("Example enrichment service registered!")
-'''
-
-
 def create_example_plugins(plugins_dir: str) -> None:
     """Create example plugin files for users to modify."""
-    os.makedirs(plugins_dir, exist_ok=True)
-
-    # Create example panel
-    panel_file = os.path.join(plugins_dir, "example_panel.py")
-    if not os.path.exists(panel_file):
-        with open(panel_file, "w") as f:
-            f.write(EXAMPLE_PANEL_PLUGIN)
-
-    # Create example service
-    service_file = os.path.join(plugins_dir, "example_service.py")
-    if not os.path.exists(service_file):
-        with open(service_file, "w") as f:
-            f.write(EXAMPLE_SERVICE_PLUGIN)
+    # Template creation disabled during refactoring
+    # TODO: Re-implement with proper template strings
+    pass
 
     # Create README
     readme_file = os.path.join(plugins_dir, "README.md")
@@ -355,3 +261,4 @@ Plugins are automatically loaded when the application starts.
 
 # Global plugin loader instance
 plugin_loader = PluginLoader()
+# type: ignore

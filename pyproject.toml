@@ -34,6 +34,7 @@ dependencies = [
 dev = [
     "pytest>=6.0",
     "pytest-cov>=3.0",
+    "pytest-asyncio>=0.21.0",
     "black>=22.0",
     "isort>=5.0",
     "flake8>=4.0",
@@ -96,6 +97,7 @@ disable_error_code = ["assignment", "arg-type", "attr-defined", "var-annotated"]
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra -q --cov=nowplaying --cov-report=term-missing"
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["nowplaying"]
