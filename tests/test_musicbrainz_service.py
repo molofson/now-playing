@@ -172,6 +172,7 @@ class TestMusicBrainzService:
         self, service, sample_request, mock_artist_response, mock_release_response, mock_recording_response
     ):
         """Test enrichment with full metadata available."""
+
         # Mock all three API calls
         def mock_urlopen_side_effect(request, timeout=None):  # noqa: U100
             url = request.get_full_url()
@@ -277,6 +278,7 @@ class TestMusicBrainzService:
     @pytest.mark.asyncio
     async def test_enrich_service_level_error(self, service, sample_request):
         """Test enrichment with service-level errors."""
+
         # Mock an error at the service level (not individual search level)
         async def mock_rate_limit():
             pass

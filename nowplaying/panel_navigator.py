@@ -25,6 +25,7 @@ class PanelNavigator:
     """Manages navigation between content panels with swipe support."""
 
     def __init__(self):
+        """Initialize the panel navigator."""
         self.registry = content_panel_registry
         self._current_panel_index = 0
         self._available_panels: List[ContentPanel] = []

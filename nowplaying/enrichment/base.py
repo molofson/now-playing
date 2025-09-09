@@ -6,6 +6,7 @@ for implementing metadata enrichment services.
 """
 
 import asyncio
+import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -97,6 +98,7 @@ class EnrichmentService(ABC):
         self.enabled = True
         self._rate_limit_delay = 1.0
         self._last_request_time = 0.0
+        self.logger = logging.getLogger(f"enrichment.{service_id}")
 
     @abstractmethod
     async def enrich(self, request: EnrichmentRequest) -> Optional[EnrichmentData]:  # noqa: U100
