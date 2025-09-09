@@ -93,6 +93,26 @@ class TestMusicBrainzService:
         assert service._base_url == "https://musicbrainz.org/ws/2"
         assert "NowPlayingApp" in service._user_agent
 
+    def test_logger_initialization(self, service):
+        """Test that logger is properly initialized."""
+        assert hasattr(service, "logger")
+        assert service.logger is not None
+        assert service.logger.name == "enrichment.musicbrainz"
+
+    def test_logger_functionality(self, service, caplog):
+        """Test that logger actually works."""
+        import logging
+
+        with caplog.at_level(logging.DEBUG):
+            service.logger.debug("Test debug message")
+            service.logger.info("Test info message")
+            service.logger.warning("Test warning message")
+
+        # Check that messages were logged
+        assert "Test debug message" in caplog.text
+        assert "Test info message" in caplog.text
+        assert "Test warning message" in caplog.text
+
     @pytest.mark.asyncio
     async def test_search_artist_success(self, service, mock_artist_response):
         """Test successful artist search."""
