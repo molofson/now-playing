@@ -20,11 +20,14 @@ from .musicbrainz_service import MusicBrainzService
 class EnrichmentEngine:
     """Manages metadata enrichment services and orchestrates enrichment."""
 
-    def __init__(self, max_workers: int = 4, config: Optional[EnrichmentConfig] = None):
+    def __init__(self, max_workers: int = 4, config=None):
         """Initialize enrichment engine with worker thread pool."""
-        from ..config import EnrichmentConfig
+        # Import here to avoid circular imports
+        if config is None:
+            from ..config import EnrichmentConfig
+            config = EnrichmentConfig()
         
-        self.config = config or EnrichmentConfig()
+        self.config = config
         self.services: Dict[str, EnrichmentService] = {}
         self.enabled_services: Set[str] = set()
         self._max_workers = max_workers

@@ -26,6 +26,12 @@ make install-dev
 ./run_discovery.sh
 ```
 
+**Test enrichment without GUI:**
+```bash
+# Demo the enrichment system (no pygame required)
+python3 enrichment_demo.py "Radiohead" --album "OK Computer" --show-config
+```
+
 **Direct execution:**
 ```bash
 # Windowed mode

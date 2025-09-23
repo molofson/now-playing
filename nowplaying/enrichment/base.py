@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
 
-from ..music_views import ContentContext
+from ..content_context import ContentContext
 
 
 @dataclass
