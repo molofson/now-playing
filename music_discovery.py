@@ -420,15 +420,18 @@ class DiscoveryApp:
         self.running = True
         try:
             while self.running:
+                # Calculate delta time for smooth animations
+                dt = self.clock.tick(self.config.ui.target_fps) / 1000.0  # Convert to seconds
+
                 # Handle events
                 if not self.handle_events():
                     break
 
+                # Update navigator transitions
+                self.navigator.update_transitions(dt)
+
                 # Render frame
                 self.render()
-
-                # Control frame rate
-                self.clock.tick(self.config.ui.target_fps)
 
         except KeyboardInterrupt:
             self.logger.info("Received keyboard interrupt")

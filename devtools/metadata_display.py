@@ -316,15 +316,16 @@ class DisplayApp:
         self.scroll_offset = 0
         self.max_scroll_offset = 0
 
-        # Touch gesture state
+        # Enhanced touch gesture state
         self.touch_down = False
         self.touch_start_pos = None
         self.touch_start_time = 0
         self.last_touch_time = 0
         self.is_dragging = False
         self.last_drag_y = 0
-        self.drag_threshold = 10  # pixels
+        self.drag_threshold = 8  # Reduced for better responsiveness
         self.double_tap_threshold = 0.5  # seconds
+        self.initial_touch_pos = None  # Track initial touch for gesture recognition
 
         # Set up signal handling
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -598,15 +599,17 @@ class DisplayApp:
                     self.scroll_down()
 
     def handle_touch_start(self, x, y):
-        """Handle touch/mouse down event."""
+        """Handle touch/mouse down event with enhanced tracking."""
         self.touch_down = True
         self.touch_start_pos = (x, y)
         self.touch_start_time = time.time()
         self.is_dragging = False
         self.last_drag_y = y
+        # Track initial position for better gesture recognition
+        self.initial_touch_pos = (x, y)
 
     def handle_touch_drag(self, x, y):
-        """Handle touch/mouse drag event."""
+        """Handle touch/mouse drag event with improved sensitivity."""
         if not self.touch_down or not self.touch_start_pos:
             return
 
@@ -614,8 +617,13 @@ class DisplayApp:
         start_x, start_y = self.touch_start_pos
         distance = ((x - start_x) ** 2 + (y - start_y) ** 2) ** 0.5
 
-        # If we've moved enough to be considered a drag
-        if distance > self.drag_threshold:
+        # Enhanced drag threshold with velocity consideration
+        current_time = time.time()
+        time_delta = current_time - self.touch_start_time
+        velocity = distance / max(time_delta, 0.001)  # pixels per second
+
+        # If we've moved enough to be considered a drag or moving fast enough
+        if distance > self.drag_threshold or velocity > 200:  # 200 px/s velocity threshold
             if not self.is_dragging:
                 # First time we recognize this as a drag
                 self.is_dragging = True
@@ -623,13 +631,12 @@ class DisplayApp:
                 if not self.scrollback_mode:
                     self.enter_scrollback_mode()
 
-            # Handle vertical scrolling
+            # Handle vertical scrolling with improved sensitivity
             if self.scrollback_mode:
                 delta_y = y - self.last_drag_y
-                # Scale down the scrolling sensitivity
-                # Positive delta_y = drag down = show older logs (scroll up in history)
-                # Negative delta_y = drag up = show newer logs (scroll down in history)
-                scroll_lines = int(delta_y / 10)
+                # Enhanced scaling with momentum consideration
+                scroll_sensitivity = 8  # Reduced for smoother scrolling
+                scroll_lines = int(delta_y / scroll_sensitivity)
 
                 if scroll_lines != 0:
                     for _ in range(abs(scroll_lines)):

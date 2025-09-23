@@ -11,6 +11,9 @@ htmlcov/
 .vscode/
 __pycache__/
 
+# Test artifacts for development
+test_swipe_improvements.py
+
 # Package build artifacts
 build/
 dist/
