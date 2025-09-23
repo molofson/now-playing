@@ -20,14 +20,17 @@ from .musicbrainz_service import MusicBrainzService
 class EnrichmentEngine:
     """Manages metadata enrichment services and orchestrates enrichment."""
 
-    def __init__(self, max_workers: int = 4):
+    def __init__(self, max_workers: int = 4, config: Optional[EnrichmentConfig] = None):
         """Initialize enrichment engine with worker thread pool."""
+        from ..config import EnrichmentConfig
+        
+        self.config = config or EnrichmentConfig()
         self.services: Dict[str, EnrichmentService] = {}
         self.enabled_services: Set[str] = set()
         self._max_workers = max_workers
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self._enrichment_cache: Dict[str, EnrichmentData] = {}
-        self._cache_timeout = 3600  # 1 hour cache timeout
+        self._cache_timeout = self.config.cache_timeout
 
         # Setup logger first
         self.logger = logging.getLogger("enrichment.engine")
@@ -35,14 +38,25 @@ class EnrichmentEngine:
         # Callbacks for enrichment completion
         self._enrichment_callbacks: List[Callable[[EnrichmentData, ContentContext], None]] = []
 
-        # Register built-in services
+        # Register built-in services with configuration
         self._register_builtin_services()
 
     def _register_builtin_services(self):
-        """Register built-in enrichment services."""
-        self.register_service(MusicBrainzService())
-        self.register_service(DiscogsService())
-        self.register_service(LastFmService())
+        """Register built-in enrichment services with configuration."""
+        if self.config.enable_musicbrainz:
+            musicbrainz_service = MusicBrainzService()
+            musicbrainz_service._rate_limit_delay = self.config.musicbrainz_rate_limit
+            self.register_service(musicbrainz_service)
+        
+        if self.config.enable_discogs:
+            discogs_service = DiscogsService()
+            discogs_service._rate_limit_delay = self.config.discogs_rate_limit
+            self.register_service(discogs_service)
+        
+        if self.config.enable_lastfm:
+            lastfm_service = LastFmService(api_key=self.config.lastfm_api_key)
+            lastfm_service._rate_limit_delay = self.config.lastfm_rate_limit
+            self.register_service(lastfm_service)
 
     def register_service(self, service: EnrichmentService) -> None:
         """Register an enrichment service."""
@@ -152,7 +166,8 @@ class EnrichmentEngine:
         self._enrichment_cache[cache_key] = enrichment
 
         # Simple cache size management
-        if len(self._enrichment_cache) > 1000:
+        max_cache_size = getattr(self.config, 'max_cache_size', 1000)
+        if len(self._enrichment_cache) > max_cache_size:
             # Remove oldest entries (simplified LRU)
             oldest_key = min(
                 self._enrichment_cache.keys(),

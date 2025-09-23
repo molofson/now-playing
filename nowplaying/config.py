@@ -50,6 +50,35 @@ class MetadataReaderConfig:
 
 
 @dataclass
+class EnrichmentConfig:
+    """Configuration for enrichment services."""
+
+    # Service API keys (set these to enable real API calls)
+    lastfm_api_key: Optional[str] = None
+    discogs_user_token: Optional[str] = None
+    
+    # Rate limiting
+    musicbrainz_rate_limit: float = 1.0  # seconds between requests
+    discogs_rate_limit: float = 1.5  # seconds between requests
+    lastfm_rate_limit: float = 0.5  # seconds between requests
+    
+    # Timeouts
+    request_timeout: float = 10.0  # seconds
+    
+    # Cache settings
+    cache_timeout: float = 3600.0  # 1 hour cache timeout
+    max_cache_size: int = 1000  # max cached enrichments
+    
+    # Service enablement
+    enable_musicbrainz: bool = True
+    enable_discogs: bool = True
+    enable_lastfm: bool = True
+    
+    # Fallback behavior
+    use_mock_data_on_failure: bool = True
+
+
+@dataclass
 class UIConfig:
     """Configuration for UI components."""
 
@@ -84,6 +113,7 @@ class AppConfig:
 
     state_monitor: StateMonitorConfig = field(default_factory=StateMonitorConfig)
     metadata_reader: MetadataReaderConfig = field(default_factory=MetadataReaderConfig)
+    enrichment: EnrichmentConfig = field(default_factory=EnrichmentConfig)
     ui: UIConfig = field(default_factory=UIConfig)
 
     # Global settings

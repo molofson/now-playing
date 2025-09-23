@@ -53,9 +53,16 @@ python3 music_discovery.py --windowed 2>/dev/null
 ## Built-in Panels
 
 1. **Now Playing Panel** 🎵 - Current song metadata and playback state
-2. **Cover Art Panel** 🖼️ - Large cover art display
-3. **VU Meter Panel** 📊 - Audio level visualization
-4. **Debug Panel** 🐛 - Debug information display
+2. **Music Discovery Panel** 🔍 - Unified enriched metadata discovery interface
+3. **Cover Art Panel** 🖼️ - Large cover art display
+4. **VU Meter Panel** 📊 - Audio level visualization
+5. **Debug Panel** 🐛 - Debug information display
+
+### Discovery-Specific Panels
+
+6. **MusicBrainz Panel** 🎼 - Detailed MusicBrainz metadata and IDs
+7. **Discogs Panel** 🏺 - Discogs release information and discography
+8. **Last.fm Panel** 📻 - Artist biographies, tags, and similar artists
 
 ## Architecture Overview
 
@@ -68,9 +75,39 @@ The application is built on a modular ContentPanel architecture:
 - **`nowplaying/panel_navigator.py`** - Swipe navigation controller
 - **`nowplaying/plugin_system.py`** - User plugin loading system
 
+## Configuration
+
+### API Keys Setup
+
+To get real data from external services, set up API keys:
+
+1. **Copy the example config:**
+   ```bash
+   cp config.example.yaml config.yaml
+   ```
+
+2. **Get Last.fm API key:**
+   - Visit https://www.last.fm/api/account/create
+   - Create an account and generate an API key
+   - Add to `config.yaml`: `enrichment.lastfm_api_key: YOUR_KEY`
+
+3. **Get Discogs user token:**
+   - Visit https://www.discogs.com/settings/developers
+   - Generate a personal access token
+   - Add to `config.yaml`: `enrichment.discogs_user_token: YOUR_TOKEN`
+
+4. **MusicBrainz** - No API key required, works out of the box!
+
+The app gracefully falls back to meaningful mock data when API keys aren't configured.
+
 ## Metadata Sources
 
 The application monitors `/tmp/shairport-sync-metadata` for AirPlay metadata. If you don't have `shairport-sync` running, you can still explore the interface with demo data.
+
+**External Data Sources:**
+- **MusicBrainz**: Artist, album, and track metadata with unique identifiers
+- **Discogs**: Release information, artist discographies, and marketplace data  
+- **Last.fm**: Artist biographies, genre tags, similar artists, and listening statistics
 
 ## Plugin Development
 

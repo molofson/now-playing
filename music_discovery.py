@@ -24,6 +24,7 @@ import pygame
 
 from nowplaying.capture_replay import MetadataReplay
 from nowplaying.config import AppConfig
+from nowplaying.config_loader import load_config, print_config_status
 from nowplaying.enrichment import EnrichmentRequest, enrichment_engine
 from nowplaying.metadata_monitor import StateMonitor
 from nowplaying.music_views import ContentContext
@@ -31,6 +32,7 @@ from nowplaying.panel_navigator import PanelNavigator
 from nowplaying.panels import (
     CoverArtPanel,
     DebugPanel,
+    DiscoveryPanel,
     NowPlayingPanel,
     VUMeterPanel,
     content_panel_registry,
@@ -126,6 +128,8 @@ class DiscoveryApp:
         try:
             self.logger.info("Registering NowPlayingPanel")
             content_panel_registry.register_panel(NowPlayingPanel())
+            self.logger.info("Registering DiscoveryPanel")
+            content_panel_registry.register_panel(DiscoveryPanel())
             self.logger.info("Registering CoverArtPanel")
             content_panel_registry.register_panel(CoverArtPanel())
             self.logger.info("Registering VUMeterPanel")
@@ -163,7 +167,11 @@ class DiscoveryApp:
             self.logger.error("Failed to register built-in panels: %s", e)
 
     def _setup_enrichment(self):
-        """Setup metadata enrichment."""
+        """Setup metadata enrichment with configuration."""
+        # Initialize enrichment engine with config
+        global enrichment_engine
+        from nowplaying.enrichment.engine import EnrichmentEngine
+        enrichment_engine = EnrichmentEngine(config=self.config.enrichment)
 
         def on_enrichment_complete(enrichment_data, context):
             """Handle enrichment completion."""
@@ -546,10 +554,21 @@ def main():
     logging.basicConfig(level=log_level, format="%(asctime)s - %(levelname)s - %(message)s")
 
     # Load configuration
-    config = AppConfig.create_default()
-    if args.debug:
-        config.debug = True
-        config.log_level = "DEBUG"
+    try:
+        config = load_config(args.config)
+        if args.debug:
+            config.debug = True
+            config.log_level = "DEBUG"
+    except Exception as e:
+        logging.error(f"Failed to load configuration: {e}")
+        config = AppConfig.create_default()
+        if args.debug:
+            config.debug = True
+            config.log_level = "DEBUG"
+
+    # Print configuration status if debug mode
+    if config.debug:
+        print_config_status(config)
 
     # Create and run application
     app = DiscoveryApp(

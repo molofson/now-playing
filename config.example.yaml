@@ -1,0 +1,70 @@
+# Music Discovery Configuration
+# Copy this file to config.yaml and customize as needed
+
+# Enrichment Services Configuration
+enrichment:
+  # Last.fm API Configuration
+  # Get your API key from: https://www.last.fm/api/account/create
+  lastfm_api_key: null  # Set to your Last.fm API key for real data
+  
+  # Discogs API Configuration  
+  # Get your user token from: https://www.discogs.com/settings/developers
+  discogs_user_token: null  # Set to your Discogs user token for real data
+  
+  # Rate Limiting (seconds between requests)
+  musicbrainz_rate_limit: 1.0
+  discogs_rate_limit: 1.5
+  lastfm_rate_limit: 0.5
+  
+  # Cache Settings
+  cache_timeout: 3600.0  # 1 hour
+  max_cache_size: 1000
+  
+  # Service Enablement
+  enable_musicbrainz: true
+  enable_discogs: true
+  enable_lastfm: true
+  
+  # Fallback to mock data when APIs fail/unavailable
+  use_mock_data_on_failure: true
+
+# Display Configuration
+ui:
+  target_fps: 30
+  
+  # Font sizes
+  font_size_log: 20
+  font_size_meta: 24  
+  font_size_title: 28
+  
+  # Layout
+  margin: 16
+  max_log_lines: 500
+  visible_log_lines: 40
+  
+  # Colors (RGB values)
+  color_dark_bg: [10, 10, 14]
+  color_text: [230, 230, 230] 
+  color_dim_text: [170, 170, 170]
+  color_accent: [120, 170, 255]
+  color_error: [255, 120, 120]
+  color_warn: [255, 210, 140]
+  color_debug: [140, 160, 255]
+  color_divider: [28, 28, 36]
+
+# Metadata Source Configuration  
+state_monitor:
+  # Pipe path for shairport-sync metadata
+  pipe_path: "/tmp/shairport-sync-metadata"
+  
+  # Timeouts
+  wait_timeout_seconds: 2.0
+  thread_join_timeout: 1.0
+  select_timeout: 0.1
+  
+  # Threading
+  daemon_threads: true
+
+# Global Settings
+debug: false
+log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
