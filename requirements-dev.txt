@@ -22,6 +22,7 @@ mypy                     # Static type checking
 # Testing and coverage
 # -----------------------------
 pytest            # Test runner
+pytest-asyncio    # Async test support  
 coverage          # Core coverage measurement tool
 pytest-cov       # Pytest plugin to combine with coverage
 pygame
