@@ -13,6 +13,7 @@ from .discogs_panel import DiscogsPanel
 from .lastfm_panel import LastFmPanel
 from .musicbrainz_panel import MusicBrainzPanel
 from .now_playing_panel import NowPlayingPanel
+from .recommendations_panel import RecommendationsPanel
 from .registry import content_panel_registry
 from .vu_meter_panel import VUMeterPanel
 
@@ -30,6 +31,7 @@ __all__ = [
     "MusicBrainzPanel",
     "DiscogsPanel",
     "LastFmPanel",
+    "RecommendationsPanel",
     # Registry instance
     "content_panel_registry",
 ]

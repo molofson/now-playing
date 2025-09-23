@@ -32,6 +32,7 @@ from nowplaying.panels import (
     CoverArtPanel,
     DebugPanel,
     NowPlayingPanel,
+    RecommendationsPanel,
     VUMeterPanel,
     content_panel_registry,
 )
@@ -74,6 +75,7 @@ class DiscoveryApp:
         display_mode: str = "kiosk",
         capture_file: Optional[str] = None,
         replay_file: Optional[str] = None,
+        demo_mode: bool = False,
     ):
         """Initialize the discovery application.
 
@@ -82,11 +84,13 @@ class DiscoveryApp:
             display_mode: Display mode - 'kiosk', 'windowed', or 'fullscreen'
             capture_file: Optional file to capture metadata to
             replay_file: Optional file to replay metadata from
+            demo_mode: Enable demo mode with sample data
         """
         self.config = config
         self.display_mode = display_mode
         self.capture_file = capture_file
         self.replay_file = replay_file
+        self.demo_mode = demo_mode
 
         # Core components
         self.monitor: Optional[StateMonitor] = None
@@ -130,6 +134,8 @@ class DiscoveryApp:
             content_panel_registry.register_panel(CoverArtPanel())
             self.logger.info("Registering VUMeterPanel")
             content_panel_registry.register_panel(VUMeterPanel())
+            self.logger.info("Registering RecommendationsPanel")
+            content_panel_registry.register_panel(RecommendationsPanel())
             self.logger.info("Registering DebugPanel")
             content_panel_registry.register_panel(DebugPanel())
             # Enrichment panels
@@ -258,6 +264,12 @@ class DiscoveryApp:
 
                 self.logger.info(f"Started replay from: {self.replay_file}")
 
+            elif self.demo_mode:
+                # Demo mode - use generated demo data
+                from nowplaying.demo_data import demo_data_generator
+                self.demo_generator = demo_data_generator
+                self.logger.info("Started demo mode with generated sample data")
+
             else:
                 # Normal monitoring mode, with optional capture
                 self.monitor = StateMonitor(
@@ -364,6 +376,12 @@ class DiscoveryApp:
         """Render the current frame."""
         if not self.screen:
             return
+
+        # Update demo context if in demo mode
+        if self.demo_mode and hasattr(self, 'demo_generator'):
+            demo_context = self.demo_generator.create_demo_context()
+            self.current_context = demo_context
+            self.navigator.update_live_context(demo_context)
 
         # Clear screen
         self.screen.fill((10, 10, 14))  # Dark background
@@ -525,6 +543,7 @@ def main():
         help="Run in kiosk mode (fullscreen, hides taskbars, default)",
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument("--demo", action="store_true", help="Run in demo mode with sample data")
     parser.add_argument("--capture", help="Capture metadata to file for testing/replay")
     parser.add_argument(
         "--replay",
@@ -557,6 +576,7 @@ def main():
         display_mode=display_mode,
         capture_file=args.capture,
         replay_file=args.replay,
+        demo_mode=args.demo,
     )
     try:
         app.run()
