@@ -86,6 +86,17 @@ pre-commit-install:
 	@echo "Installing pre-commit hook..."
 	@$(PRECOMMIT) install
 
+# ─── AI-Powered Commits ──────────────────────────────────────────────────
+commit-ai:
+	@echo "Generating AI-powered commit message..."
+	@command -v npm >/dev/null 2>&1 || { echo "❌ npm not found. Please install Node.js."; exit 1; }
+	@if [ ! -d "node_modules" ]; then \
+		echo "📦 Installing npm dependencies..."; \
+		npm install; \
+	fi
+	@echo "🤖 Running aicommits..."
+	@npm run commit-ai
+
 # ─── Preview Changelog ────────────────────────────────────────────────────
 preview-changelog:
 	@echo "Previewing unreleased changelog..."
@@ -162,6 +173,7 @@ help:
 	@echo "  # Git and Pre-commit"
 	@echo "  hooks               Run all configured pre-commit hooks"
 	@echo "  pre-commit-install  Install pre-commit hook into .git/hooks"
+	@echo "  commit-ai           Generate AI-powered commit message and commit changes"
 	@echo ""
 	@echo "  # Composite Targets"
 	@echo "  check               Run basic dev checks (format + lint + dead-code + test)"

@@ -19,3 +19,7 @@ dist/
 # Virtual environments that shouldn't be tracked
 activate/
 activaate/
+
+# Node.js dependencies
+node_modules/
+package-lock.json

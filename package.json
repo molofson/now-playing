@@ -7,12 +7,16 @@
   "main": "index.js",
   "scripts": {
     "test": "pytest",
-    "lint": "flake8 ."
+    "lint": "flake8 .",
+    "commit-ai": "aicommits"
   },
   "directories": {
     "test": "tests"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "aicommits": "^1.11.0"
+  }
 }
