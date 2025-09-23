@@ -39,26 +39,76 @@ class LastFmPanel(ContentPanel):
     def render(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
         if not self._context:
             return
-        font = pygame.font.Font(None, 24)
+            
+        font = pygame.font.Font(None, 20)
+        font_small = pygame.font.Font(None, 16)
         mid_x = rect.left + rect.width // 2
         y = rect.top + 10
+        
         enrichment = getattr(self._context, "enrichment_data", None)
+        
         if enrichment and hasattr(enrichment, "artist_bio"):
+            # Artist Bio (truncated)
+            bio = enrichment.artist_bio or ""
+            if len(bio) > 200:
+                bio = bio[:200] + "..."
+            
             lines = [
-                f"Artist Bio: {enrichment.artist_bio}",
-                f"Artist Tags: {', '.join(enrichment.artist_tags)}",
-                f"Similar Artists: {enrichment.similar_artists}",
-                f"Scrobble Count: {enrichment.scrobble_count}",
+                f"Artist: {self._context.artist}",
+                "",
+                "Biography:",
+                bio,
+                "",
+                f"Tags: {', '.join(enrichment.artist_tags) if enrichment.artist_tags else 'None'}",
             ]
+            
+            # Add scrobble count if available
+            if enrichment.scrobble_count:
+                lines.append(f"Play count: {enrichment.scrobble_count:,}")
+            
+            # Add similar artists
+            if enrichment.similar_artists:
+                lines.append("")
+                lines.append("Similar Artists:")
+                for artist in enrichment.similar_artists[:3]:  # Show top 3
+                    name = artist.get("name", "Unknown")
+                    match = artist.get("match", 0)
+                    lines.append(f"  • {name} ({match:.0%} match)")
         else:
-            lines = ["No Last.fm enrichment data."]
+            lines = [
+                f"Artist: {self._context.artist}",
+                "",
+                "No Last.fm enrichment data available.",
+                "",
+                "To enable real Last.fm data:",
+                "Set LASTFM_API_KEY environment variable"
+            ]
+        
+        # Render left side content
         for line in lines:
-            text = font.render(line, True, (230, 230, 230))
-            surface.blit(text, (rect.left + 20, y))
-            y += 30
+            if line.startswith("  •"):
+                # Indent similar artists
+                text = font_small.render(line, True, (200, 200, 200))
+                surface.blit(text, (rect.left + 40, y))
+            elif line == "":
+                # Empty line for spacing
+                pass
+            else:
+                color = (230, 230, 230) if not line.startswith("To enable") else (170, 170, 170)
+                text = font.render(line, True, color)
+                surface.blit(text, (rect.left + 20, y))
+            y += 22
+            
+            # Don't go below the panel
+            if y > rect.bottom - 40:
+                break
+        
+        # Render log buffer on right side
         log_lines = self.log_buffer.get_lines()[-15:]
         y_log = rect.top + 10
         for line in log_lines:
-            text = font.render(line, True, (180, 180, 180))
+            text = font_small.render(line, True, (140, 140, 140))
             surface.blit(text, (mid_x + 20, y_log))
-            y_log += 24
+            y_log += 18
+            if y_log > rect.bottom - 20:
+                break

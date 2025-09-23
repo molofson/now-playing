@@ -40,9 +40,20 @@ class EnrichmentEngine:
 
     def _register_builtin_services(self):
         """Register built-in enrichment services."""
+        # Check for API keys/tokens from environment variables
+        import os
+        lastfm_api_key = os.getenv('LASTFM_API_KEY')
+        discogs_token = os.getenv('DISCOGS_TOKEN')
+        
         self.register_service(MusicBrainzService())
-        self.register_service(DiscogsService())
-        self.register_service(LastFmService())
+        self.register_service(DiscogsService(api_token=discogs_token))
+        self.register_service(LastFmService(api_key=lastfm_api_key))
+        
+        # Log API key status
+        self.logger.info("Enrichment services initialized:")
+        self.logger.info("  - MusicBrainz: enabled (no API key required)")
+        self.logger.info("  - Discogs: %s", "enabled with API" if discogs_token else "mock data only (no token)")
+        self.logger.info("  - Last.fm: %s", "enabled with API" if lastfm_api_key else "mock data only (no API key)")
 
     def register_service(self, service: EnrichmentService) -> None:
         """Register an enrichment service."""

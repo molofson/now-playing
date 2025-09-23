@@ -39,25 +39,72 @@ class DiscogsPanel(ContentPanel):
     def render(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
         if not self._context:
             return
-        font = pygame.font.Font(None, 24)
+            
+        font = pygame.font.Font(None, 20)
+        font_small = pygame.font.Font(None, 16)
         mid_x = rect.left + rect.width // 2
         y = rect.top + 10
+        
         enrichment = getattr(self._context, "enrichment_data", None)
+        
         if enrichment and hasattr(enrichment, "discogs_artist_id"):
             lines = [
-                f"Discogs Artist ID: {enrichment.discogs_artist_id}",
-                f"Discogs Release ID: {enrichment.discogs_release_id}",
-                f"Artist Discography: {enrichment.artist_discography}",
+                f"Artist: {self._context.artist}",
+                f"Album: {self._context.album}",
+                "",
             ]
+            
+            # Add IDs if available
+            if enrichment.discogs_artist_id:
+                lines.append(f"Artist ID: {enrichment.discogs_artist_id}")
+            if enrichment.discogs_release_id:
+                lines.append(f"Release ID: {enrichment.discogs_release_id}")
+            
+            # Add discography
+            if enrichment.artist_discography:
+                lines.append("")
+                lines.append("Artist Discography:")
+                for release in enrichment.artist_discography[:8]:  # Show up to 8 releases
+                    title = release.get("title", "Unknown")
+                    year = release.get("year", "????")
+                    format_type = release.get("format", "Unknown")
+                    lines.append(f"  • {title} ({year}) [{format_type}]")
         else:
-            lines = ["No Discogs enrichment data."]
+            lines = [
+                f"Artist: {self._context.artist}",
+                f"Album: {self._context.album}",
+                "",
+                "No Discogs enrichment data available.",
+                "",
+                "To enable real Discogs data:",
+                "Set DISCOGS_TOKEN environment variable"
+            ]
+        
+        # Render left side content
         for line in lines:
-            text = font.render(line, True, (230, 230, 230))
-            surface.blit(text, (rect.left + 20, y))
-            y += 30
+            if line.startswith("  •"):
+                # Indent discography items
+                text = font_small.render(line, True, (200, 200, 200))
+                surface.blit(text, (rect.left + 40, y))
+            elif line == "":
+                # Empty line for spacing
+                pass
+            else:
+                color = (230, 230, 230) if not line.startswith("To enable") else (170, 170, 170)
+                text = font.render(line, True, color)
+                surface.blit(text, (rect.left + 20, y))
+            y += 20
+            
+            # Don't go below the panel
+            if y > rect.bottom - 40:
+                break
+        
+        # Render log buffer on right side
         log_lines = self.log_buffer.get_lines()[-15:]
         y_log = rect.top + 10
         for line in log_lines:
-            text = font.render(line, True, (180, 180, 180))
+            text = font_small.render(line, True, (140, 140, 140))
             surface.blit(text, (mid_x + 20, y_log))
-            y_log += 24
+            y_log += 18
+            if y_log > rect.bottom - 20:
+                break

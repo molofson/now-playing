@@ -10,6 +10,7 @@ from .base import ContentContext, ContentPanel, ContentPanelRegistry, PanelInfo
 from .cover_art_panel import CoverArtPanel
 from .debug_panel import DebugPanel
 from .discogs_panel import DiscogsPanel
+from .enrichment_status_panel import EnrichmentStatusPanel
 from .lastfm_panel import LastFmPanel
 from .musicbrainz_panel import MusicBrainzPanel
 from .now_playing_panel import NowPlayingPanel
@@ -24,12 +25,13 @@ __all__ = [
     "ContentPanelRegistry",
     # Built-in panels
     "NowPlayingPanel",
-    "CoverArtPanel",
+    "CoverArtPanel", 
     "VUMeterPanel",
     "DebugPanel",
     "MusicBrainzPanel",
     "DiscogsPanel",
     "LastFmPanel",
+    "EnrichmentStatusPanel",
     # Registry instance
     "content_panel_registry",
 ]

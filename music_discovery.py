@@ -31,6 +31,7 @@ from nowplaying.panel_navigator import PanelNavigator
 from nowplaying.panels import (
     CoverArtPanel,
     DebugPanel,
+    EnrichmentStatusPanel,
     NowPlayingPanel,
     VUMeterPanel,
     content_panel_registry,
@@ -132,6 +133,8 @@ class DiscoveryApp:
             content_panel_registry.register_panel(VUMeterPanel())
             self.logger.info("Registering DebugPanel")
             content_panel_registry.register_panel(DebugPanel())
+            self.logger.info("Registering EnrichmentStatusPanel")
+            content_panel_registry.register_panel(EnrichmentStatusPanel())
             # Enrichment panels
             try:
                 self.logger.info("Registering MusicBrainzPanel")
