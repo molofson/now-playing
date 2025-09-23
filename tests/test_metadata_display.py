@@ -16,28 +16,15 @@ from unittest.mock import MagicMock, patch
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from devtools.metadata_display import LOG_FONT_SIZE  # noqa: E402
+from devtools.metadata_display import META_FONT_SIZE  # noqa: E402
+from devtools.metadata_display import TITLE_FONT_SIZE  # noqa: E402
+from devtools.metadata_display import DebugLogFilter  # noqa: E402
+from devtools.metadata_display import MillisecondFormatter  # noqa: E402
+from devtools.metadata_display import PygameLogHandler  # noqa: E402
+from devtools.metadata_display import TailBuffer  # noqa: E402
+
 # IMPORT ORDERING NOTE: The following import has conflicting requirements:
-# - isort (with black profile) groups constants (ALL_CAPS) separately from classes (PascalCase)
-# - flake8-import-order expects strict alphabetical ordering across all import names
-# - black is compatible with isort's grouping approach
-#
-# Resolution: Use isort/black ordering (constants first, then classes) and suppress
-# the conflicting flake8-import-order rule I101 with noqa directive.
-#
-# DO NOT change this ordering without considering all three tools:
-# - isort wants: LOG_FONT_SIZE, META_FONT_SIZE, TITLE_FONT_SIZE, DebugLogFilter, ...
-# - flake8 wants: DebugLogFilter, LOG_FONT_SIZE, META_FONT_SIZE, MillisecondFormatter, ...
-# - black is compatible with isort's approach but they disagree on multi-line imports
-# isort: skip_file - disable isort for this file due to tool conflicts
-from devtools.metadata_display import LOG_FONT_SIZE  # noqa: E402,I101 - Constants grouped first (isort/black style)
-from devtools.metadata_display import META_FONT_SIZE  # noqa: E402,I101 - Constants grouped first (isort/black style)
-from devtools.metadata_display import TITLE_FONT_SIZE  # noqa: E402,I101 - Constants grouped first (isort/black style)
-from devtools.metadata_display import DebugLogFilter  # noqa: E402,I101 - Classes grouped second (isort/black style)
-from devtools.metadata_display import (  # noqa: E402,I101 - Classes grouped second (isort/black style)
-    MillisecondFormatter,
-)  # noqa: E402,I101 - Classes grouped second (isort/black style)
-from devtools.metadata_display import PygameLogHandler  # noqa: E402,I101 - Classes grouped second (isort/black style)
-from devtools.metadata_display import TailBuffer  # noqa: E402,I101 - Classes grouped second (isort/black style)
 
 
 class TestTailBuffer(unittest.TestCase):
@@ -309,14 +296,26 @@ class TestFontSizeRegression(unittest.TestCase):
     def test_log_font_size_not_too_large(self):
         """Ensure log font size is reasonable for displaying more data."""
         # LOG_FONT_SIZE should be smaller than other font sizes to show more log data
-        self.assertLessEqual(LOG_FONT_SIZE, 16, "Log font size should be 16 or smaller to display more log data")
-        self.assertLess(LOG_FONT_SIZE, META_FONT_SIZE, "Log font should be smaller than metadata font")
+        self.assertLessEqual(
+            LOG_FONT_SIZE,
+            16,
+            "Log font size should be 16 or smaller to display more log data",
+        )
+        self.assertLess(
+            LOG_FONT_SIZE,
+            META_FONT_SIZE,
+            "Log font should be smaller than metadata font",
+        )
         self.assertLess(LOG_FONT_SIZE, TITLE_FONT_SIZE, "Log font should be smaller than title font")
 
     def test_font_size_reasonable_bounds(self):
         """Ensure font sizes are within reasonable bounds."""
         self.assertGreaterEqual(LOG_FONT_SIZE, 10, "Log font should not be too small to be readable")
-        self.assertLessEqual(LOG_FONT_SIZE, 20, "Log font should not be too large, limiting visible lines")
+        self.assertLessEqual(
+            LOG_FONT_SIZE,
+            20,
+            "Log font should not be too large, limiting visible lines",
+        )
 
 
 class TestLogDisplayRegressionPrevention(unittest.TestCase):
@@ -353,19 +352,41 @@ class TestLogDisplayRegressionPrevention(unittest.TestCase):
             import re
 
             time_pattern = r"\d{2}:\d{2}:\d{2}\.\d{3}"
-            self.assertIsNone(re.search(time_pattern, message), f"Message should not contain timestamp: {message}")
+            self.assertIsNone(
+                re.search(time_pattern, message),
+                f"Message should not contain timestamp: {message}",
+            )
 
             # Message should NOT contain level prefixes
-            self.assertNotIn(f"[{level}]", message, f"Message should not contain level prefix: {message}")
+            self.assertNotIn(
+                f"[{level}]",
+                message,
+                f"Message should not contain level prefix: {message}",
+            )
 
             # Message should NOT contain logger name
-            self.assertNotIn("test.display.regression", message, f"Message should not contain logger name: {message}")
+            self.assertNotIn(
+                "test.display.regression",
+                message,
+                f"Message should not contain logger name: {message}",
+            )
 
             # Message should NOT contain colons from formatter
-            if message in ["Simple info message", "Warning with timestamp", "Error message", "Debug information"]:
+            if message in [
+                "Simple info message",
+                "Warning with timestamp",
+                "Error message",
+                "Debug information",
+            ]:
                 # These are our test messages - they should be exact
                 self.assertIn(
-                    message, ["Simple info message", "Warning with timestamp", "Error message", "Debug information"]
+                    message,
+                    [
+                        "Simple info message",
+                        "Warning with timestamp",
+                        "Error message",
+                        "Debug information",
+                    ],
                 )
 
     def test_message_readability(self):

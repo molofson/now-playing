@@ -20,6 +20,23 @@ from contextlib import redirect_stderr
 from io import StringIO
 from typing import Any, Dict, Optional
 
+import pygame
+
+from nowplaying.capture_replay import MetadataReplay
+from nowplaying.config import AppConfig
+from nowplaying.enrichment import EnrichmentRequest, enrichment_engine
+from nowplaying.metadata_monitor import StateMonitor
+from nowplaying.music_views import ContentContext
+from nowplaying.panel_navigator import PanelNavigator
+from nowplaying.panels import (
+    CoverArtPanel,
+    DebugPanel,
+    NowPlayingPanel,
+    VUMeterPanel,
+    content_panel_registry,
+)
+from nowplaying.playback_state import PlaybackState
+
 # Suppress pygame startup messages and system warnings
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 os.environ["PYGAME_DETECT_AVX2"] = "0"
@@ -41,28 +58,11 @@ os.environ["XMODIFIERS"] = ""
 os.environ["SDL_VIDEO_WINDOW_POS"] = "0,0"
 os.environ["SDL_VIDEO_CENTERED"] = "0"
 
-import pygame  # noqa: E402
-
 # Add project root to path
-script_dir = os.path.dirname(os.path.abspath(__file__))  # noqa: E402
-project_root = os.path.dirname(script_dir)  # noqa: E402
-if project_root not in sys.path:  # noqa: E402
-    sys.path.insert(0, project_root)  # noqa: E402
-
-from nowplaying.capture_replay import MetadataReplay  # noqa: E402
-from nowplaying.config import AppConfig  # noqa: E402
-from nowplaying.enrichment import EnrichmentRequest, enrichment_engine  # noqa: E402
-from nowplaying.metadata_monitor import StateMonitor  # noqa: E402
-from nowplaying.music_views import ContentContext  # noqa: E402
-from nowplaying.panel_navigator import PanelNavigator  # noqa: E402
-from nowplaying.panels import (  # noqa: E402
-    CoverArtPanel,
-    DebugPanel,
-    NowPlayingPanel,
-    VUMeterPanel,
-    content_panel_registry,
-)
-from nowplaying.playback_state import PlaybackState  # noqa: E402
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 
 class DiscoveryApp:
@@ -117,18 +117,48 @@ class DiscoveryApp:
     def _setup_logging(self):
         """Setup logging configuration."""
         logging.basicConfig(
-            level=getattr(logging, self.config.log_level), format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            level=getattr(logging, self.config.log_level),
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
 
     def _register_builtin_panels(self):
         """Register built-in content panels."""
         try:
+            self.logger.info("Registering NowPlayingPanel")
             content_panel_registry.register_panel(NowPlayingPanel())
+            self.logger.info("Registering CoverArtPanel")
             content_panel_registry.register_panel(CoverArtPanel())
+            self.logger.info("Registering VUMeterPanel")
             content_panel_registry.register_panel(VUMeterPanel())
+            self.logger.info("Registering DebugPanel")
             content_panel_registry.register_panel(DebugPanel())
+            # Enrichment panels
+            try:
+                self.logger.info("Registering MusicBrainzPanel")
+                from nowplaying.panels.musicbrainz_panel import MusicBrainzPanel
 
-            self.logger.info("Registered %d built-in panels", len(content_panel_registry.get_panel_ids()))
+                content_panel_registry.register_panel(MusicBrainzPanel())
+            except Exception as e:
+                self.logger.error("Failed to register MusicBrainzPanel: %s", e)
+            try:
+                self.logger.info("Registering DiscogsPanel")
+                from nowplaying.panels.discogs_panel import DiscogsPanel
+
+                content_panel_registry.register_panel(DiscogsPanel())
+            except Exception as e:
+                self.logger.error("Failed to register DiscogsPanel: %s", e)
+            try:
+                self.logger.info("Registering LastFmPanel")
+                from nowplaying.panels.lastfm_panel import LastFmPanel
+
+                content_panel_registry.register_panel(LastFmPanel())
+            except Exception as e:
+                self.logger.error("Failed to register LastFmPanel: %s", e)
+
+            self.logger.info(
+                "Registered %d built-in panels",
+                len(content_panel_registry.get_panel_ids()),
+            )
         except Exception as e:
             self.logger.error("Failed to register built-in panels: %s", e)
 
@@ -141,6 +171,8 @@ class DiscoveryApp:
             # Store enrichment data (could be passed to panels)
             key = f"{context.artist}:{context.album}:{context.title}"
             self.enrichment_data[key] = enrichment_data
+            # Attach enrichment data to context for panels
+            context.enrichment_data = enrichment_data
 
         enrichment_engine.add_enrichment_callback(on_enrichment_complete)
 
@@ -262,7 +294,10 @@ class DiscoveryApp:
             # Trigger enrichment (async)
             if context.artist or context.album or context.title:
                 request = EnrichmentRequest(
-                    artist=context.artist, album=context.album, title=context.title, context=context
+                    artist=context.artist,
+                    album=context.album,
+                    title=context.title,
+                    context=context,
                 )
                 enrichment_engine.enrich_sync(request)
 
@@ -478,12 +513,23 @@ def main():
     """Main entry point for the music discovery application."""
     parser = argparse.ArgumentParser(description="Music Discovery Interface")
     parser.add_argument("--config", help="Path to config file")
-    parser.add_argument("--windowed", action="store_true", help="Run in windowed mode (with decorations)")
+    parser.add_argument(
+        "--windowed",
+        action="store_true",
+        help="Run in windowed mode (with decorations)",
+    )
     parser.add_argument("--fullscreen", action="store_true", help="Run in fullscreen mode")
-    parser.add_argument("--kiosk", action="store_true", help="Run in kiosk mode (fullscreen, hides taskbars, default)")
+    parser.add_argument(
+        "--kiosk",
+        action="store_true",
+        help="Run in kiosk mode (fullscreen, hides taskbars, default)",
+    )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument("--capture", help="Capture metadata to file for testing/replay")
-    parser.add_argument("--replay", help="Replay metadata from file with fast-forward (supports .gz compression)")
+    parser.add_argument(
+        "--replay",
+        help="Replay metadata from file with fast-forward (supports .gz compression)",
+    )
 
     args = parser.parse_args()
 
@@ -506,7 +552,12 @@ def main():
         config.log_level = "DEBUG"
 
     # Create and run application
-    app = DiscoveryApp(config, display_mode=display_mode, capture_file=args.capture, replay_file=args.replay)
+    app = DiscoveryApp(
+        config,
+        display_mode=display_mode,
+        capture_file=args.capture,
+        replay_file=args.replay,
+    )
     try:
         app.run()
     except KeyboardInterrupt:

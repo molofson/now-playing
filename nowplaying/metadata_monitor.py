@@ -170,7 +170,8 @@ class StateMonitor:
         """Start waiting timer for states that need it."""
         if new_state in (PlaybackState.PAUSED, PlaybackState.STOPPED):
             self._waiting_timer = threading.Timer(
-                self._config.wait_timeout_seconds, lambda: self._transition_state(PlaybackState.WAITING, "timeout")
+                self._config.wait_timeout_seconds,
+                lambda: self._transition_state(PlaybackState.WAITING, "timeout"),
             )
             self._waiting_timer.start()
 

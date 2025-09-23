@@ -55,12 +55,20 @@ class TestContentPanelRegistry:
 
         # Create test panels
         self.panel1_info = PanelInfo(
-            id="panel1", name="Panel 1", description="First test panel", icon="🎵", category="general"
+            id="panel1",
+            name="Panel 1",
+            description="First test panel",
+            icon="🎵",
+            category="general",
         )
         self.panel1 = MockContentPanel(self.panel1_info)
 
         self.panel2_info = PanelInfo(
-            id="panel2", name="Panel 2", description="Second test panel", icon="🎶", category="debug"
+            id="panel2",
+            name="Panel 2",
+            description="Second test panel",
+            icon="🎶",
+            category="debug",
         )
         self.panel2 = MockContentPanel(self.panel2_info)
 

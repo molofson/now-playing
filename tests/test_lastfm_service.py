@@ -27,7 +27,12 @@ class TestLastFmService:
     def sample_request(self):
         """Create sample enrichment request."""
         context = Mock(spec=ContentContext)
-        return EnrichmentRequest(artist="Radiohead", album="OK Computer", title="Paranoid Android", context=context)
+        return EnrichmentRequest(
+            artist="Radiohead",
+            album="OK Computer",
+            title="Paranoid Android",
+            context=context,
+        )
 
     def test_service_initialization(self, service):
         """Test service initialization."""

@@ -104,7 +104,10 @@ class PlaybackStateMachine:
 
         if not self.can_transition_to(new_state):
             log.warning(
-                "Invalid state transition: %s -> %s%s", self._current_state, new_state, f" ({reason})" if reason else ""
+                "Invalid state transition: %s -> %s%s",
+                self._current_state,
+                new_state,
+                f" ({reason})" if reason else "",
             )
             return False
 
@@ -113,7 +116,10 @@ class PlaybackStateMachine:
         self._current_state = new_state
 
         log.info(
-            "State transition: %s -> %s%s", self._previous_state, self._current_state, f" ({reason})" if reason else ""
+            "State transition: %s -> %s%s",
+            self._previous_state,
+            self._current_state,
+            f" ({reason})" if reason else "",
         )
         return True
 
@@ -142,7 +148,10 @@ class PlaybackStateMachine:
 
         # Log warning for forced transitions to aid debugging
         log.warning(
-            "Forced state transition: %s -> %s%s", self._current_state, new_state, f" ({reason})" if reason else ""
+            "Forced state transition: %s -> %s%s",
+            self._current_state,
+            new_state,
+            f" ({reason})" if reason else "",
         )
 
         self._previous_state = self._current_state

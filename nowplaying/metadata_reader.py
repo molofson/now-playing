@@ -399,13 +399,22 @@ class ShairportSyncPipeReader:
                 # Check if the decoded string contains null characters or other control chars
                 # which indicates binary data that shouldn't be treated as text
                 if "\x00" in value or any(ord(c) < 32 and c not in "\n\r\t" for c in value):
-                    log.debug("Core metadata %s: <binary data, %d bytes>", field_name, len(payload))
+                    log.debug(
+                        "Core metadata %s: <binary data, %d bytes>",
+                        field_name,
+                        len(payload),
+                    )
                 else:
                     self._current_metadata[field_name] = value
                     log.debug("Core metadata %s: %s", field_name, value)
             except UnicodeDecodeError as e:
                 # Some fields contain binary data (timestamps, IDs, etc.)
-                log.debug("Core metadata %s: <binary data, %d bytes> - %s", field_name, len(payload), e)
+                log.debug(
+                    "Core metadata %s: <binary data, %d bytes> - %s",
+                    field_name,
+                    len(payload),
+                    e,
+                )
         else:
             # Convert hex code to ASCII for better readability and try to decode value
             try:
@@ -419,12 +428,21 @@ class ShairportSyncPipeReader:
                         value = payload.decode("utf-8").strip()
                         # Check for binary data disguised as text
                         if "\x00" in value or any(ord(c) < 32 and c not in "\n\r\t" for c in value):
-                            log.debug("DMAP %s (%s): <binary data, %d bytes>", ascii_code, description, len(payload))
+                            log.debug(
+                                "DMAP %s (%s): <binary data, %d bytes>",
+                                ascii_code,
+                                description,
+                                len(payload),
+                            )
                         else:
                             log.debug("DMAP %s (%s): %s", ascii_code, description, value)
                     except UnicodeDecodeError as e:
                         log.debug(
-                            "DMAP %s (%s): <binary data, %d bytes> - %s", ascii_code, description, len(payload), e
+                            "DMAP %s (%s): <binary data, %d bytes> - %s",
+                            ascii_code,
+                            description,
+                            len(payload),
+                            e,
                         )
                 else:
                     # Unknown DMAP field - show hex
@@ -433,18 +451,35 @@ class ShairportSyncPipeReader:
                         # Check for binary data disguised as text
                         if "\x00" in value or any(ord(c) < 32 and c not in "\n\r\t" for c in value):
                             log.debug(
-                                "Unknown DMAP 0x%08x ('%s'): <binary data, %d bytes>", code, ascii_code, len(payload)
+                                "Unknown DMAP 0x%08x ('%s'): <binary data, %d bytes>",
+                                code,
+                                ascii_code,
+                                len(payload),
                             )
                         else:
-                            log.debug("Unknown DMAP 0x%08x ('%s'): %s", code, ascii_code, value)
+                            log.debug(
+                                "Unknown DMAP 0x%08x ('%s'): %s",
+                                code,
+                                ascii_code,
+                                value,
+                            )
                     except UnicodeDecodeError:
-                        log.debug("Unknown DMAP 0x%08x ('%s'): <binary data, %d bytes>", code, ascii_code, len(payload))
+                        log.debug(
+                            "Unknown DMAP 0x%08x ('%s'): <binary data, %d bytes>",
+                            code,
+                            ascii_code,
+                            len(payload),
+                        )
             except (UnicodeDecodeError, struct.error):
                 try:
                     value = payload.decode("utf-8").strip()
                     log.debug("Unknown core metadata code: 0x%08x: %s", code, value)
                 except UnicodeDecodeError:
-                    log.debug("Unknown core metadata code: 0x%08x: <binary data, %d bytes>", code, len(payload))
+                    log.debug(
+                        "Unknown core metadata code: 0x%08x: <binary data, %d bytes>",
+                        code,
+                        len(payload),
+                    )
 
     def _handle_ssnc_metadata(self, code: int, payload: bytes) -> None:
         """Handle shairport-sync specific metadata and state changes."""
@@ -647,7 +682,10 @@ class ShairportSyncPipeReader:
                 self._sequence_number += 1
                 self._current_metadata["sequence_number"] = str(self._sequence_number)
                 self._current_metadata["cover_art_path"] = filename
-                log.info("Dispatching metadata with existing cover art: %s", self._current_metadata)
+                log.info(
+                    "Dispatching metadata with existing cover art: %s",
+                    self._current_metadata,
+                )
                 self._metadata_callback(self._current_metadata.copy())
             else:
                 log.debug("No current metadata to update with existing cover art path")

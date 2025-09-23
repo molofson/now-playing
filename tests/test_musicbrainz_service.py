@@ -31,7 +31,12 @@ class TestMusicBrainzService:
     def sample_request(self):
         """Create sample enrichment request."""
         context = Mock(spec=ContentContext)
-        return EnrichmentRequest(artist="The Beatles", album="Abbey Road", title="Come Together", context=context)
+        return EnrichmentRequest(
+            artist="The Beatles",
+            album="Abbey Road",
+            title="Come Together",
+            context=context,
+        )
 
     @pytest.fixture
     def mock_artist_response(self):
@@ -189,7 +194,12 @@ class TestMusicBrainzService:
 
     @pytest.mark.asyncio
     async def test_enrich_full_metadata(
-        self, service, sample_request, mock_artist_response, mock_release_response, mock_recording_response
+        self,
+        service,
+        sample_request,
+        mock_artist_response,
+        mock_release_response,
+        mock_recording_response,
     ):
         """Test enrichment with full metadata available."""
 
@@ -247,7 +257,14 @@ class TestMusicBrainzService:
         request = EnrichmentRequest(artist="The Beatles", album="", title="", context=context)
 
         mock_artist_response = {
-            "artists": [{"id": "12345-67890-abcdef", "name": "The Beatles", "type": "Group", "score": 100}]
+            "artists": [
+                {
+                    "id": "12345-67890-abcdef",
+                    "name": "The Beatles",
+                    "type": "Group",
+                    "score": 100,
+                }
+            ]
         }
 
         with patch("urllib.request.urlopen") as mock_urlopen:
@@ -305,7 +322,11 @@ class TestMusicBrainzService:
 
         with (
             patch.object(service, "_rate_limit", side_effect=mock_rate_limit),
-            patch.object(service, "_search_artist_sync", side_effect=RuntimeError("Service unavailable")),
+            patch.object(
+                service,
+                "_search_artist_sync",
+                side_effect=RuntimeError("Service unavailable"),
+            ),
         ):
             result = await service.enrich(sample_request)
 

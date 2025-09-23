@@ -9,6 +9,9 @@ for the swipeable content interface.
 from .base import ContentContext, ContentPanel, ContentPanelRegistry, PanelInfo
 from .cover_art_panel import CoverArtPanel
 from .debug_panel import DebugPanel
+from .discogs_panel import DiscogsPanel
+from .lastfm_panel import LastFmPanel
+from .musicbrainz_panel import MusicBrainzPanel
 from .now_playing_panel import NowPlayingPanel
 from .registry import content_panel_registry
 from .vu_meter_panel import VUMeterPanel
@@ -24,6 +27,9 @@ __all__ = [
     "CoverArtPanel",
     "VUMeterPanel",
     "DebugPanel",
+    "MusicBrainzPanel",
+    "DiscogsPanel",
+    "LastFmPanel",
     # Registry instance
     "content_panel_registry",
 ]

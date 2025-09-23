@@ -86,7 +86,12 @@ class TestShairportSyncPipeReader:
         call_args = self.metadata_callback.call_args[0][0]
 
         # Verify expected metadata fields are present
-        expected_fields = {"album": "Test Album", "artist": "Test Artist", "title": "Test Song", "genre": "Rock"}
+        expected_fields = {
+            "album": "Test Album",
+            "artist": "Test Artist",
+            "title": "Test Song",
+            "genre": "Rock",
+        }
         for key, value in expected_fields.items():
             assert call_args[key] == value, f"Expected {key}='{value}', got '{call_args.get(key)}'"
 

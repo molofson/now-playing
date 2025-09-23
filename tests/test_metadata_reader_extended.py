@@ -62,7 +62,9 @@ class TestShairportSyncPipeReaderExtended:
 
             # Should be detected as binary due to null characters
             mock_log.debug.assert_called_with(
-                "Core metadata %s: <binary data, %d bytes>", "artist", len(text_with_nulls.encode())
+                "Core metadata %s: <binary data, %d bytes>",
+                "artist",
+                len(text_with_nulls.encode()),
             )
             assert "artist" not in self.reader._current_metadata
 
@@ -286,7 +288,10 @@ class TestShairportSyncPipeReaderExtended:
             # The code 0x12345678 converts to ASCII '\x124Vx' so it logs as unknown DMAP
             ascii_code = struct.pack(">I", 0x12345678).decode("ascii", errors="replace")
             mock_log.debug.assert_called_with(
-                "Unknown DMAP 0x%08x ('%s'): <binary data, %d bytes>", 0x12345678, ascii_code, len(binary_data)
+                "Unknown DMAP 0x%08x ('%s'): <binary data, %d bytes>",
+                0x12345678,
+                ascii_code,
+                len(binary_data),
             )
 
     def test_ssnc_codes_comprehensive(self):
@@ -297,8 +302,16 @@ class TestShairportSyncPipeReaderExtended:
             (0x70656E64, None, PlaybackState.STOPPED),  # pend - play end
             (0x61656E64, None, PlaybackState.NO_SESSION),  # aend - active end
             (0x7072736D, None, PlaybackState.PLAYING),  # prsm - play resume
-            (0x70637374, "1", PlaybackState.PLAYING),  # pcst - play control state (playing)
-            (0x70637374, "0", PlaybackState.PAUSED),  # pcst - play control state (paused)
+            (
+                0x70637374,
+                "1",
+                PlaybackState.PLAYING,
+            ),  # pcst - play control state (playing)
+            (
+                0x70637374,
+                "0",
+                PlaybackState.PAUSED,
+            ),  # pcst - play control state (paused)
             # Non-state-changing codes (should not trigger state callback)
             (0x636C6970, "192.168.1.100", None),  # clip - client IP
             (0x73766970, "192.168.1.1", None),  # svip - server IP

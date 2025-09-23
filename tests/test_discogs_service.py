@@ -27,7 +27,12 @@ class TestDiscogsService:
     def sample_request(self):
         """Create sample enrichment request."""
         context = Mock(spec=ContentContext)
-        return EnrichmentRequest(artist="Pink Floyd", album="The Dark Side of the Moon", title="Money", context=context)
+        return EnrichmentRequest(
+            artist="Pink Floyd",
+            album="The Dark Side of the Moon",
+            title="Money",
+            context=context,
+        )
 
     def test_service_initialization(self, service):
         """Test service initialization."""

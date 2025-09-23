@@ -223,7 +223,11 @@ class TestContentPanel:
     def test_can_display_requires_cover_art(self):
         """Test can_display when cover art is required."""
         info = PanelInfo(
-            id="art_panel", name="Art Panel", description="Needs cover art", icon="🎨", requires_cover_art=True
+            id="art_panel",
+            name="Art Panel",
+            description="Needs cover art",
+            icon="🎨",
+            requires_cover_art=True,
         )
         panel = ConcreteContentPanel(info)
 
@@ -238,7 +242,11 @@ class TestContentPanel:
     def test_can_display_requires_audio_data(self):
         """Test can_display when audio data is required."""
         info = PanelInfo(
-            id="audio_panel", name="Audio Panel", description="Needs audio data", icon="🔊", requires_audio_data=True
+            id="audio_panel",
+            name="Audio Panel",
+            description="Needs audio data",
+            icon="🔊",
+            requires_audio_data=True,
         )
         panel = ConcreteContentPanel(info)
 
@@ -257,7 +265,11 @@ class TestContentPanel:
     def test_supports_hold_audio_panel(self):
         """Test supports_hold for audio panels."""
         info = PanelInfo(
-            id="audio_panel", name="Audio Panel", description="Audio panel", icon="🔊", requires_audio_data=True
+            id="audio_panel",
+            name="Audio Panel",
+            description="Audio panel",
+            icon="🔊",
+            requires_audio_data=True,
         )
         panel = ConcreteContentPanel(info)
 

@@ -36,7 +36,11 @@ class DiscogsService(EnrichmentService):
 
             # Mock artist discography
             enrichment.artist_discography = [
-                {"title": f"{request.album} (Original)", "year": "2020", "format": "LP"},
+                {
+                    "title": f"{request.album} (Original)",
+                    "year": "2020",
+                    "format": "LP",
+                },
                 {"title": "Previous Album", "year": "2018", "format": "CD"},
             ]
 

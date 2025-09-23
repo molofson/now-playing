@@ -75,7 +75,11 @@ class TestPlaybackStateMachine:
         self.state_machine.transition_to(PlaybackState.UNDETERMINED)
         self.state_machine.transition_to(PlaybackState.PLAYING)
         valid = self.state_machine.get_valid_transitions()
-        expected = {PlaybackState.PAUSED, PlaybackState.STOPPED, PlaybackState.NO_SESSION}
+        expected = {
+            PlaybackState.PAUSED,
+            PlaybackState.STOPPED,
+            PlaybackState.NO_SESSION,
+        }
         assert valid == expected
 
     def test_reset(self):

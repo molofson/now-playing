@@ -32,7 +32,10 @@ class MusicBrainzService(EnrichmentService):
             query = urllib.parse.quote_plus(f'artist:"{artist_name}"')
             url = f"{self._base_url}/artist/?query={query}&fmt=json&limit=1"
 
-            req = urllib.request.Request(url, headers={"User-Agent": self._user_agent, "Accept": "application/json"})
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": self._user_agent, "Accept": "application/json"},
+            )
 
             with urllib.request.urlopen(req, timeout=10) as response:
                 data = json.loads(response.read().decode("utf-8"))
@@ -60,7 +63,10 @@ class MusicBrainzService(EnrichmentService):
             query = urllib.parse.quote_plus(f'release:"{album}" AND artist:"{artist}"')
             url = f"{self._base_url}/release/?query={query}&fmt=json&limit=1"
 
-            req = urllib.request.Request(url, headers={"User-Agent": self._user_agent, "Accept": "application/json"})
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": self._user_agent, "Accept": "application/json"},
+            )
 
             with urllib.request.urlopen(req, timeout=10) as response:
                 data = json.loads(response.read().decode("utf-8"))
@@ -89,7 +95,10 @@ class MusicBrainzService(EnrichmentService):
             query = urllib.parse.quote_plus(f'recording:"{track}" AND artist:"{artist}"')
             url = f"{self._base_url}/recording/?query={query}&fmt=json&limit=1"
 
-            req = urllib.request.Request(url, headers={"User-Agent": self._user_agent, "Accept": "application/json"})
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": self._user_agent, "Accept": "application/json"},
+            )
 
             with urllib.request.urlopen(req, timeout=10) as response:
                 data = json.loads(response.read().decode("utf-8"))
@@ -144,13 +153,19 @@ class MusicBrainzService(EnrichmentService):
                 album_future = None
                 if request.album:
                     album_future = loop.run_in_executor(
-                        executor, self._search_release_sync, request.artist, request.album
+                        executor,
+                        self._search_release_sync,
+                        request.artist,
+                        request.album,
                     )
 
                 track_future = None
                 if request.title:
                     track_future = loop.run_in_executor(
-                        executor, self._search_recording_sync, request.artist, request.title
+                        executor,
+                        self._search_recording_sync,
+                        request.artist,
+                        request.title,
                     )
 
                 # Collect results
@@ -198,10 +213,12 @@ class MusicBrainzService(EnrichmentService):
                 # This happens when all individual searches fail
                 pass  # Still return the enrichment, just with no data
 
+            self.logger.info("MusicBrainz enrichment result: %s", enrichment)
             return enrichment
 
         except Exception as e:
             self.logger.error("MusicBrainz enrichment failed: %s", e)
             enrichment = EnrichmentData()
             enrichment.service_errors["musicbrainz"] = str(e)
+            self.logger.info("MusicBrainz enrichment result (error): %s", enrichment)
             return enrichment

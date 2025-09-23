@@ -398,7 +398,14 @@ class DisplayApp:
             # Try to hide common Linux desktop panels
             for panel_class in ["panel", "lxpanel"]:
                 subprocess.run(
-                    ["xdotool", "search", "--onlyvisible", "--class", panel_class, "windowunmap"],
+                    [
+                        "xdotool",
+                        "search",
+                        "--onlyvisible",
+                        "--class",
+                        panel_class,
+                        "windowunmap",
+                    ],
                     capture_output=True,
                     timeout=1,
                 )
@@ -559,7 +566,10 @@ class DisplayApp:
                     self.scroll_page_up()
                 elif self.scrollback_mode and event.key == pygame.K_PAGEDOWN:
                     self.scroll_page_down()
-                elif self.scrollback_mode and event.key in (pygame.K_ESCAPE, pygame.K_RETURN):
+                elif self.scrollback_mode and event.key in (
+                    pygame.K_ESCAPE,
+                    pygame.K_RETURN,
+                ):
                     self.exit_scrollback_mode()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left mouse button or touch
@@ -816,7 +826,11 @@ class DisplayApp:
             # Draw placeholder
             pygame.draw.rect(self.screen, DIVIDER_COLOR, art_rect, 2)
             placeholder_text = self._render_text(
-                self.fonts["meta"], DEFAULT_COVER_TEXT, (0, 0), DIM_TEXT, return_surface=True
+                self.fonts["meta"],
+                DEFAULT_COVER_TEXT,
+                (0, 0),
+                DIM_TEXT,
+                return_surface=True,
             )
             placeholder_x = art_rect.x + (art_rect.width - placeholder_text.get_width()) // 2
             placeholder_y = art_rect.y + (art_rect.height - placeholder_text.get_height()) // 2
@@ -834,7 +848,13 @@ class DisplayApp:
 
         for label, value in fields:
             label_surface = self._render_text(self.fonts["meta"], f"{label}:", (0, 0), DIM_TEXT, return_surface=True)
-            value_surface = self._render_text(self.fonts["meta"], value or "-", (0, 0), TEXT_COLOR, return_surface=True)
+            value_surface = self._render_text(
+                self.fonts["meta"],
+                value or "-",
+                (0, 0),
+                TEXT_COLOR,
+                return_surface=True,
+            )
 
             self.screen.blit(label_surface, (rect.x + MARGIN, y))
             self.screen.blit(value_surface, (rect.x + MARGIN + label_surface.get_width() + 12, y))
@@ -885,7 +905,10 @@ class DisplayApp:
             # Fallback for any other rendering issues - write to stderr for visibility
             import sys
 
-            print(f"DISPLAY ERROR: Text rendering error for '{text[:50]}...': {e}", file=sys.stderr)
+            print(
+                f"DISPLAY ERROR: Text rendering error for '{text[:50]}...': {e}",
+                file=sys.stderr,
+            )
             logging.getLogger("display").warning(f"Text rendering error for '{text[:50]}...': {e}")
             # Try with a simple safe character set
             safe_text = "".join(c if ord(c) < 128 else "?" for c in text)
@@ -899,7 +922,10 @@ class DisplayApp:
                 # Ultimate fallback
                 import sys
 
-                print(f"DISPLAY ERROR: Critical text rendering failure: {e}", file=sys.stderr)
+                print(
+                    f"DISPLAY ERROR: Critical text rendering failure: {e}",
+                    file=sys.stderr,
+                )
                 fallback_text = "[render error]"
                 surface = font.render(fallback_text, True, color)
                 if return_surface:
@@ -1214,7 +1240,10 @@ def main():
 
     try:
         app = DisplayApp(
-            use_fullscreen=not windowed, kiosk_mode=kiosk, headless=cli_mode, debug_subsystems=debug_subsystems
+            use_fullscreen=not windowed,
+            kiosk_mode=kiosk,
+            headless=cli_mode,
+            debug_subsystems=debug_subsystems,
         )
         result = app.run(
             capture_file=capture_file,

@@ -7,10 +7,4 @@ Use imports from nowplaying.panels instead.
 """
 
 # For any legacy code that might still import from here, redirect to panels package
-from .panels import (  # noqa: F401
-    ContentContext,
-    ContentPanel,
-    ContentPanelRegistry,
-    PanelInfo,
-    content_panel_registry,
-)
+from .panels import ContentContext, ContentPanel, ContentPanelRegistry, PanelInfo, content_panel_registry  # noqa: F401

@@ -112,7 +112,13 @@ class TestCLIMode:
         """Test CLI mode behavior when pipe doesn't exist."""
         # Add --pipe argument with non-existent path
         process = subprocess.Popen(
-            [sys.executable, self.get_metadata_display_path(), "--cli", "--pipe", "/nonexistent/pipe"],
+            [
+                sys.executable,
+                self.get_metadata_display_path(),
+                "--cli",
+                "--pipe",
+                "/nonexistent/pipe",
+            ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,

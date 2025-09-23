@@ -132,7 +132,11 @@ class PluginLoader:
                     panel_instance = obj()  # type: ignore[call-arg]
                     content_panel_registry.register_panel(panel_instance)
                     plugin_info["panels"].append(panel_instance.info.id)
-                    self.logger.debug("Registered panel: %s from plugin %s", panel_instance.info.id, plugin_name)
+                    self.logger.debug(
+                        "Registered panel: %s from plugin %s",
+                        panel_instance.info.id,
+                        plugin_name,
+                    )
                 except Exception as e:
                     self.logger.error("Failed to register panel %s: %s", name, e)
 
@@ -144,7 +148,9 @@ class PluginLoader:
                     enrichment_engine.register_service(service_instance)
                     plugin_info["services"].append(service_instance.service_id)
                     self.logger.debug(
-                        "Registered enrichment service: %s from plugin %s", service_instance.service_id, plugin_name
+                        "Registered enrichment service: %s from plugin %s",
+                        service_instance.service_id,
+                        plugin_name,
                     )
                 except Exception as e:
                     self.logger.error("Failed to register service %s: %s", name, e)

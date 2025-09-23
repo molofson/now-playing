@@ -32,7 +32,10 @@ class TestModuleRegistry:
     def test_register_module_basic(self):
         """Test registering a basic module."""
         self.registry.register_module(
-            name="test_module", description="A test module", logger_name="test.module", debug_flag="--debug-test"
+            name="test_module",
+            description="A test module",
+            logger_name="test.module",
+            debug_flag="--debug-test",
         )
 
         assert "test_module" in self.registry._modules
@@ -64,10 +67,16 @@ class TestModuleRegistry:
     def test_register_multiple_modules(self):
         """Test registering multiple modules."""
         self.registry.register_module(
-            name="module1", description="First module", logger_name="test.module1", debug_flag="--debug-mod1"
+            name="module1",
+            description="First module",
+            logger_name="test.module1",
+            debug_flag="--debug-mod1",
         )
         self.registry.register_module(
-            name="module2", description="Second module", logger_name="test.module2", debug_flag="--debug-mod2"
+            name="module2",
+            description="Second module",
+            logger_name="test.module2",
+            debug_flag="--debug-mod2",
         )
 
         assert len(self.registry._modules) == 2
@@ -206,10 +215,16 @@ class TestModuleRegistry:
     def test_get_all_modules(self):
         """Test getting all modules returns copy."""
         self.registry.register_module(
-            name="module1", description="Module 1", logger_name="test.module1", debug_flag="--debug-mod1"
+            name="module1",
+            description="Module 1",
+            logger_name="test.module1",
+            debug_flag="--debug-mod1",
         )
         self.registry.register_module(
-            name="module2", description="Module 2", logger_name="test.module2", debug_flag="--debug-mod2"
+            name="module2",
+            description="Module 2",
+            logger_name="test.module2",
+            debug_flag="--debug-mod2",
         )
 
         all_modules = self.registry.get_all_modules()
@@ -225,10 +240,16 @@ class TestModuleRegistry:
     def test_get_module_names(self):
         """Test getting module names."""
         self.registry.register_module(
-            name="module1", description="Module 1", logger_name="test.module1", debug_flag="--debug-mod1"
+            name="module1",
+            description="Module 1",
+            logger_name="test.module1",
+            debug_flag="--debug-mod1",
         )
         self.registry.register_module(
-            name="module2", description="Module 2", logger_name="test.module2", debug_flag="--debug-mod2"
+            name="module2",
+            description="Module 2",
+            logger_name="test.module2",
+            debug_flag="--debug-mod2",
         )
 
         names = self.registry.get_module_names()
@@ -239,10 +260,16 @@ class TestModuleRegistry:
     def test_get_debug_logger_names(self):
         """Test getting debug logger names."""
         self.registry.register_module(
-            name="module1", description="Module 1", logger_name="test.logger1", debug_flag="--debug-mod1"
+            name="module1",
+            description="Module 1",
+            logger_name="test.logger1",
+            debug_flag="--debug-mod1",
         )
         self.registry.register_module(
-            name="module2", description="Module 2", logger_name="test.logger2", debug_flag="--debug-mod2"
+            name="module2",
+            description="Module 2",
+            logger_name="test.logger2",
+            debug_flag="--debug-mod2",
         )
 
         logger_names = self.registry.get_debug_logger_names()
@@ -253,10 +280,16 @@ class TestModuleRegistry:
     def test_get_debug_flags(self):
         """Test getting debug flags mapping."""
         self.registry.register_module(
-            name="module1", description="Module 1", logger_name="test.logger1", debug_flag="--debug-mod1"
+            name="module1",
+            description="Module 1",
+            logger_name="test.logger1",
+            debug_flag="--debug-mod1",
         )
         self.registry.register_module(
-            name="module2", description="Module 2", logger_name="test.logger2", debug_flag="--debug-mod2"
+            name="module2",
+            description="Module 2",
+            logger_name="test.logger2",
+            debug_flag="--debug-mod2",
         )
 
         debug_flags = self.registry.get_debug_flags()
@@ -318,7 +351,10 @@ class TestModuleRegistry:
     def test_logger_creation(self):
         """Test that loggers are properly created."""
         self.registry.register_module(
-            name="test_module", description="Test module", logger_name="test.logger.name", debug_flag="--debug-test"
+            name="test_module",
+            description="Test module",
+            logger_name="test.logger.name",
+            debug_flag="--debug-test",
         )
 
         module_info = self.registry._modules["test_module"]

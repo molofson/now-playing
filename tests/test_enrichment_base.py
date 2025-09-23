@@ -121,7 +121,12 @@ class TestEnrichmentServiceBase:
     def test_cache_key_with_special_chars(self, service):
         """Test cache key generation with special characters."""
         context = Mock(spec=ContentContext)
-        request = EnrichmentRequest(artist="Sigur Rós", album="Ágætis byrjun", title="Svefn-g-englar", context=context)
+        request = EnrichmentRequest(
+            artist="Sigur Rós",
+            album="Ágætis byrjun",
+            title="Svefn-g-englar",
+            context=context,
+        )
         cache_key = service.get_cache_key(request)
         expected = "base_test:Sigur Rós:Ágætis byrjun:Svefn-g-englar"
         assert cache_key == expected

@@ -106,7 +106,12 @@ class MetadataCapture:
             current_time = time.time()
             elapsed = current_time - self._start_time
 
-            entry = {"type": "event", "timestamp": elapsed, "event_type": event_type, "description": description}
+            entry = {
+                "type": "event",
+                "timestamp": elapsed,
+                "event_type": event_type,
+                "description": description,
+            }
 
             self._write_entry(entry)
             log.debug("Captured event: %s - %s", event_type, description)
@@ -127,12 +132,19 @@ class MetadataCapture:
             try:
                 # Write capture footer
                 end_time = time.time()
-                footer = {"type": "capture_footer", "end_time": end_time, "total_duration": end_time - self._start_time}
+                footer = {
+                    "type": "capture_footer",
+                    "end_time": end_time,
+                    "total_duration": end_time - self._start_time,
+                }
                 self._write_entry(footer)
 
                 self._file_handle.close()
                 self._file_handle = None
-                log.info("Stopped metadata capture. Duration: %.2f seconds", end_time - self._start_time)
+                log.info(
+                    "Stopped metadata capture. Duration: %.2f seconds",
+                    end_time - self._start_time,
+                )
             except Exception as e:
                 log.error("Error stopping capture: %s", e)
 
@@ -152,7 +164,12 @@ class MetadataCapture:
 class MetadataReplay:
     """Replays captured metadata with optional fast-forward through idle periods."""
 
-    def __init__(self, capture_file: str, fast_forward_gaps: bool = True, max_gap_seconds: float = 2.0):
+    def __init__(
+        self,
+        capture_file: str,
+        fast_forward_gaps: bool = True,
+        max_gap_seconds: float = 2.0,
+    ):
         """
         Initialize replay from captured file.
 
@@ -192,7 +209,9 @@ class MetadataReplay:
             return open(self._capture_file, mode, encoding="utf-8")
 
     def replay(
-        self, line_callback: Callable[[str], None], event_callback: Optional[Callable[[str, str, float], None]] = None
+        self,
+        line_callback: Callable[[str], None],
+        event_callback: Optional[Callable[[str, str, float], None]] = None,
     ) -> None:
         """
         Replay captured metadata calling callbacks for each line/event.
@@ -267,7 +286,11 @@ class MetadataReplay:
                     # Fast-forward through long gaps
                     time_to_wait = min(time_to_wait, 0.1)  # Wait only 100ms instead
                     gaps_fast_forwarded += 1
-                    log.debug("Fast-forwarding %.2fs gap (originally %.2fs)", time_to_wait, gap_since_last)
+                    log.debug(
+                        "Fast-forwarding %.2fs gap (originally %.2fs)",
+                        time_to_wait,
+                        gap_since_last,
+                    )
 
                 if time_to_wait > 0:
                     time.sleep(time_to_wait)
@@ -284,7 +307,12 @@ class MetadataReplay:
                     event_callback(event_type, description, timestamp)
                 events_processed += 1
 
-                log.debug("Replayed event at %.2fs: %s - %s", timestamp, event_type, description)
+                log.debug(
+                    "Replayed event at %.2fs: %s - %s",
+                    timestamp,
+                    event_type,
+                    description,
+                )
 
             last_timestamp = timestamp
 
@@ -292,7 +320,7 @@ class MetadataReplay:
         """Get information about the capture file without replaying it."""
         info: dict = {
             "file_path": str(self._capture_file),
-            "file_size": int(self._capture_file.stat().st_size) if self._capture_file.exists() else 0,
+            "file_size": (int(self._capture_file.stat().st_size) if self._capture_file.exists() else 0),
             "compressed": self._is_gzipped(),
             "line_count": 0,
             "event_count": 0,

@@ -41,7 +41,9 @@ class TestStateMonitorCapture(unittest.TestCase):
         state_callback = Mock()
 
         monitor = StateMonitor(
-            pipe_path="/tmp/test_pipe", metadata_callback=metadata_callback, state_callback=state_callback
+            pipe_path="/tmp/test_pipe",
+            metadata_callback=metadata_callback,
+            state_callback=state_callback,
         )
 
         # Should not have capture instance

@@ -70,7 +70,12 @@ class TestShairportSyncPipeReader:
         call_args = self.metadata_callback.call_args[0][0]
 
         # Verify expected metadata fields are present
-        expected_fields = {"artist": "Test Artist", "album": "Test Album", "title": "Test Song", "genre": "Rock"}
+        expected_fields = {
+            "artist": "Test Artist",
+            "album": "Test Album",
+            "title": "Test Song",
+            "genre": "Rock",
+        }
         for key, value in expected_fields.items():
             assert call_args[key] == value, f"Expected {key}='{value}', got '{call_args.get(key)}'"
 
@@ -188,7 +193,9 @@ class TestShutdownImprovements:
         mock_select.return_value = ([], [], [])
 
         monitor = StateMonitor(
-            pipe_path="/fake/pipe", state_callback=self.state_callback, metadata_callback=self.metadata_callback
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
         )
 
         # Start and stop quickly
@@ -446,7 +453,8 @@ class TestStateMonitorCapture:
 
         # Should capture the state change
         mock_capture.capture_event.assert_called_with(
-            "state_change", f"{PlaybackState.NO_SESSION.name} -> {PlaybackState.PLAYING.name}: test transition"
+            "state_change",
+            f"{PlaybackState.NO_SESSION.name} -> {PlaybackState.PLAYING.name}: test transition",
         )
 
 

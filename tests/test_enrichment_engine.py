@@ -12,12 +12,7 @@ import pytest
 # Add the project root to the path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from nowplaying.enrichment import (  # noqa: E402
-    EnrichmentData,
-    EnrichmentEngine,
-    EnrichmentRequest,
-    EnrichmentService,
-)
+from nowplaying.enrichment import EnrichmentData, EnrichmentEngine, EnrichmentRequest, EnrichmentService  # noqa: E402
 from nowplaying.music_views import ContentContext  # noqa: E402
 
 
