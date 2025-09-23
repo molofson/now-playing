@@ -198,6 +198,10 @@ class PluginLoader:
         self.logger.info("Unloaded plugin: %s", plugin_name)
         return True
 
+    def get_loaded_plugins(self) -> Dict[str, Dict[str, Any]]:
+        """Get information about all loaded plugins."""
+        return self.loaded_plugins.copy()
+
 
 # Example plugin template that users can copy
 EXAMPLE_PANEL_PLUGIN = '''"""

@@ -111,6 +111,9 @@ class DiscoveryApp:
         # Register built-in panels
         self._register_builtin_panels()
 
+        # Load user-defined panels and plugins
+        load_user_panels(self.config)
+
         # Setup enrichment callbacks
         self._setup_enrichment()
 
@@ -490,12 +493,30 @@ class DiscoveryApp:
             self.logger.warning("Error during pygame shutdown: %s", e)
 
 
-def load_user_panels(config: AppConfig) -> None:  # noqa: U100
+def load_user_panels(config: AppConfig) -> None:
     """Load user-defined panels from config or plugins directory."""
-    # This would implement plugin loading
-    # For now, just log that it would happen
     logger = logging.getLogger("discovery.plugins")
-    logger.info("User panel loading not yet implemented")
+    
+    try:
+        from nowplaying.plugin_system import PluginLoader
+        
+        # Initialize plugin loader
+        plugin_loader = PluginLoader()
+        
+        # Load all available plugins
+        plugin_loader.load_all_plugins()
+        
+        # Log results
+        loaded_plugins = plugin_loader.get_loaded_plugins()
+        if loaded_plugins:
+            logger.info("Loaded %d user plugins", len(loaded_plugins))
+            for plugin_name, plugin_info in loaded_plugins.items():
+                logger.info("- %s: %s", plugin_name, plugin_info.get("description", "No description"))
+        else:
+            logger.info("No user plugins found in search directories")
+            
+    except Exception as e:
+        logger.error("Failed to load user plugins: %s", e)
 
 
 def setup_signal_handlers(app: DiscoveryApp) -> None:

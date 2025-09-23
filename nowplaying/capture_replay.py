@@ -182,6 +182,7 @@ class MetadataReplay:
         self._fast_forward_gaps = fast_forward_gaps
         self._max_gap_seconds = max_gap_seconds
         self._file_handle: Optional[TextIO] = None
+        self._stop_requested = False
 
         if not self._capture_file.exists():
             raise FileNotFoundError(f"Capture file not found: {capture_file}")
@@ -243,6 +244,11 @@ class MetadataReplay:
         log.info("Starting metadata replay...")
 
         for line in file_handle:
+            # Check if stop was requested
+            if self._stop_requested:
+                log.info("Metadata replay stopped by request")
+                break
+                
             line = line.strip()
             if not line:
                 continue
@@ -357,6 +363,11 @@ class MetadataReplay:
             log.error("Error reading capture info: %s", e)
 
         return info
+
+    def stop(self) -> None:
+        """Stop the metadata replay."""
+        self._stop_requested = True
+        log.info("Metadata replay stop requested")
 
 
 def create_capture_filename(prefix: str = "metadata_capture") -> str:
