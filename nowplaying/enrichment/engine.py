@@ -12,6 +12,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Dict, List, Optional, Set
 
+from .acoustid_service import AcoustIDService
 from .allmusic_service import AllMusicService
 from .base import ContentContext, EnrichmentData, EnrichmentRequest, EnrichmentService
 from .discogs_service import DiscogsService
@@ -21,6 +22,7 @@ from .musicbrainz_service import MusicBrainzService
 from .pitchfork_service import PitchforkService
 from .setlistfm_service import SetlistFmService
 from .songfacts_service import SongfactsService
+from .spotify_service import SpotifyService
 
 
 class EnrichmentEngine:
@@ -83,6 +85,25 @@ class EnrichmentEngine:
             setlistfm_service.enabled = False  # Disable if no key provided
         # (intentionally left enabled/disabled based on environment variable)
         self.register_service(setlistfm_service)
+
+        # Spotify skeleton: enable only if SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are set
+        spotify_service = SpotifyService()
+        spotify_client_id = os.environ.get("SPOTIFY_CLIENT_ID")
+        spotify_client_secret = os.environ.get("SPOTIFY_CLIENT_SECRET")
+        if spotify_client_id and spotify_client_secret:
+            spotify_service.set_credentials(spotify_client_id, spotify_client_secret)
+        else:
+            spotify_service.enabled = False
+        self.register_service(spotify_service)
+
+        # AcoustID skeleton: enable if ACOUSTID_API_KEY is set
+        acoustid_service = AcoustIDService()
+        acoustid_key = os.environ.get("ACOUSTID_API_KEY")
+        if acoustid_key:
+            acoustid_service.set_api_key(acoustid_key)
+        else:
+            acoustid_service.enabled = False
+        self.register_service(acoustid_service)
 
     def register_service(self, service: EnrichmentService) -> None:
         """Register an enrichment service."""
