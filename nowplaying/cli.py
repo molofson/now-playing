@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Command-line interface entry points for now-playing package.
-"""
+"""Command-line interface entry points for now-playing package.."""
 
 import os
 
@@ -18,17 +16,19 @@ def display_main():
     return main()
 
 
-def test_main():
-    """Entry point for nowplaying-test command."""
-    from .test import main
+def mcp_main():
+    """Entry point for nowplaying-mcp command."""
+    import asyncio
 
-    return main()
+    from .mcp_server import serve_mcp
+
+    return asyncio.run(serve_mcp())
 
 
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) > 1 and sys.argv[1] == "test":
-        test_main()
+    if len(sys.argv) > 1 and sys.argv[1] == "mcp":
+        mcp_main()
     else:
         display_main()

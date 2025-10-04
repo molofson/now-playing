@@ -1,10 +1,4 @@
-"""
-Tests for the new PlaybackState system.
-"""
-
-from unittest.mock import Mock
-
-import pytest
+"""Tests for the new PlaybackState system."""
 
 from nowplaying.playback_state import PlaybackState, PlaybackStateMachine
 
@@ -26,6 +20,7 @@ class TestPlaybackStateMachine:
     """Test the PlaybackStateMachine class."""
 
     def setup_method(self):
+        """Set up test method fixtures."""
         self.state_machine = PlaybackStateMachine()
 
     def test_initial_state(self):
@@ -75,7 +70,11 @@ class TestPlaybackStateMachine:
         self.state_machine.transition_to(PlaybackState.UNDETERMINED)
         self.state_machine.transition_to(PlaybackState.PLAYING)
         valid = self.state_machine.get_valid_transitions()
-        expected = {PlaybackState.PAUSED, PlaybackState.STOPPED, PlaybackState.NO_SESSION}
+        expected = {
+            PlaybackState.PAUSED,
+            PlaybackState.STOPPED,
+            PlaybackState.NO_SESSION,
+        }
         assert valid == expected
 
     def test_reset(self):

@@ -1,3 +1,1 @@
-"""
-Now Playing metadata monitoring package.
-"""
+"""Now Playing metadata monitoring package."""

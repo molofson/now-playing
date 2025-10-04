@@ -8,7 +8,6 @@ without hanging, even during pipe read operations.
 import os
 import sys
 import tempfile
-import threading
 import time
 from unittest.mock import MagicMock, Mock, patch
 
@@ -22,6 +21,7 @@ class TestInterruptibleReading:
     """Test the select-based interruptible reading functionality."""
 
     def setup_method(self):
+        """Set up test method fixtures."""
         self.state_callback = Mock()
         self.metadata_callback = Mock()
 
@@ -34,7 +34,9 @@ class TestInterruptibleReading:
             os.mkfifo(pipe_path)
 
             monitor = StateMonitor(
-                pipe_path=pipe_path, state_callback=self.state_callback, metadata_callback=self.metadata_callback
+                pipe_path=pipe_path,
+                state_callback=self.state_callback,
+                metadata_callback=self.metadata_callback,
             )
 
             # Start monitoring in background
@@ -64,7 +66,9 @@ class TestInterruptibleReading:
         mock_select.return_value = ([], [], [])
 
         monitor = StateMonitor(
-            pipe_path="/fake/pipe", state_callback=self.state_callback, metadata_callback=self.metadata_callback
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
         )
 
         # Start and quickly stop to test timeout handling
@@ -92,7 +96,9 @@ class TestInterruptibleReading:
         mock_select.return_value = ([mock_fd], [], [])
 
         monitor = StateMonitor(
-            pipe_path="/fake/pipe", state_callback=self.state_callback, metadata_callback=self.metadata_callback
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
         )
 
         monitor.start()
@@ -107,6 +113,7 @@ class TestImprovedShutdown:
     """Test the improved shutdown functionality."""
 
     def setup_method(self):
+        """Set up test method fixtures."""
         self.state_callback = Mock()
         self.metadata_callback = Mock()
 
@@ -129,7 +136,9 @@ class TestImprovedShutdown:
     def test_pipe_close_exception_handling(self):
         """Test that pipe close exceptions are handled silently."""
         monitor = StateMonitor(
-            pipe_path="/fake/pipe", state_callback=self.state_callback, metadata_callback=self.metadata_callback
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
         )
 
         # Mock a pipe that raises exception on close
@@ -146,7 +155,9 @@ class TestImprovedShutdown:
     def test_thread_join_timeout_reduced(self):
         """Test that thread join timeout is now shorter."""
         monitor = StateMonitor(
-            pipe_path="/fake/pipe", state_callback=self.state_callback, metadata_callback=self.metadata_callback
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
         )
 
         # Mock thread that doesn't exit quickly
@@ -180,6 +191,7 @@ class TestStateDebouncing:
     """Test the state debouncing functionality."""
 
     def setup_method(self):
+        """Set up test method fixtures."""
         self.state_callback = Mock()
         self.monitor = StateMonitor(state_callback=self.state_callback)
 
@@ -210,7 +222,12 @@ class TestStateDebouncing:
         # All four should trigger callbacks
         assert self.state_callback.call_count == 4
         calls = [call[0][0] for call in self.state_callback.call_args_list]
-        assert calls == [PlaybackState.UNDETERMINED, PlaybackState.PLAYING, PlaybackState.PAUSED, PlaybackState.STOPPED]
+        assert calls == [
+            PlaybackState.UNDETERMINED,
+            PlaybackState.PLAYING,
+            PlaybackState.PAUSED,
+            PlaybackState.STOPPED,
+        ]
 
     @patch("threading.Timer")
     def test_timer_cancelled_on_state_change(self, mock_timer):
@@ -234,6 +251,7 @@ class TestExceptionHandling:
     """Test exception handling in the read loop."""
 
     def setup_method(self):
+        """Set up test method fixtures."""
         self.state_callback = Mock()
         self.metadata_callback = Mock()
 
@@ -251,7 +269,9 @@ class TestExceptionHandling:
         mock_select.return_value = ([mock_fd], [], [])
 
         monitor = StateMonitor(
-            pipe_path="/fake/pipe", state_callback=self.state_callback, metadata_callback=self.metadata_callback
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
         )
 
         with patch("nowplaying.metadata_monitor.log") as mock_log:
@@ -269,7 +289,9 @@ class TestExceptionHandling:
         mock_open_builtin.side_effect = FileNotFoundError("Pipe not found")
 
         monitor = StateMonitor(
-            pipe_path="/nonexistent/pipe", state_callback=self.state_callback, metadata_callback=self.metadata_callback
+            pipe_path="/nonexistent/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
         )
 
         with patch("nowplaying.metadata_monitor.log") as mock_log:

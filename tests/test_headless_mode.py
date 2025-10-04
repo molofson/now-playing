@@ -14,12 +14,20 @@ import time
 import pytest
 
 
+@pytest.mark.integration
 class TestCLIMode:
     """Test the CLI mode functionality."""
 
     def get_metadata_display_path(self):
         """Get the path to the metadata display script."""
         return os.path.join(os.path.dirname(__file__), "..", "devtools", "metadata_display.py")
+
+    def get_env_with_pythonpath(self):
+        """Get environment with PYTHONPATH set to repo root for subprocess calls."""
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        env = os.environ.copy()
+        env["PYTHONPATH"] = repo_root
+        return env
 
     def test_cli_mode_help(self):
         """Test that CLI mode shows up in help."""
@@ -28,6 +36,7 @@ class TestCLIMode:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=10,
+            env=self.get_env_with_pythonpath(),
         )
 
         assert result.returncode == 0
@@ -112,7 +121,13 @@ class TestCLIMode:
         """Test CLI mode behavior when pipe doesn't exist."""
         # Add --pipe argument with non-existent path
         process = subprocess.Popen(
-            [sys.executable, self.get_metadata_display_path(), "--cli", "--pipe", "/nonexistent/pipe"],
+            [
+                sys.executable,
+                self.get_metadata_display_path(),
+                "--cli",
+                "--pipe",
+                "/nonexistent/pipe",
+            ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -139,6 +154,7 @@ class TestCLIMode:
                 process.kill()
 
 
+@pytest.mark.integration
 class TestDisplayModeArguments:
     """Test the display mode argument parsing."""
 
@@ -193,6 +209,7 @@ class TestDisplayModeArguments:
         assert "fullscreen" in stdout_text.lower()
 
 
+@pytest.mark.integration
 class TestUnifiedCleanup:
     """Test the unified cleanup functionality across display modes."""
 
@@ -211,6 +228,7 @@ class TestUnifiedCleanup:
         # sys.exit in main() is fine - we just removed the forced exits
 
 
+@pytest.mark.integration
 class TestLogStreaming:
     """Test the log streaming functionality in CLI mode."""
 
@@ -258,6 +276,7 @@ class TestLogStreaming:
                 process.kill()
 
 
+@pytest.mark.integration
 class TestPerformanceImprovements:
     """Test the performance improvements in shutdown times."""
 

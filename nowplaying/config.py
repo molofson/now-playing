@@ -1,6 +1,4 @@
-"""
-Configuration management for the now-playing application.
-"""
+"""Configuration management for the now-playing application."""
 
 from dataclasses import dataclass, field
 from typing import Optional

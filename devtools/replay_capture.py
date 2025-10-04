@@ -1,29 +1,35 @@
 #!/usr/bin/env python3
-"""
-Command-line utility for replaying captured shairport-sync metadata.
-"""
+"""Command-line utility for replaying captured shairport-sync metadata."""
 
 import argparse
 import sys
 import time
-from pathlib import Path
 
-# Add the nowplaying package to the path
-sys.path.insert(0, str(Path(__file__).parent))
-
-from nowplaying.capture_replay import MetadataReplay  # noqa: E402
-from nowplaying.metadata_reader import ShairportSyncPipeReader  # noqa: E402
-from nowplaying.playback_state import PlaybackState  # noqa: E402
+from nowplaying.capture_replay import MetadataReplay
+from nowplaying.metadata_reader import ShairportSyncPipeReader
+from nowplaying.playback_state import PlaybackState
 
 
 def main():
+    """Run the metadata replay utility."""
     parser = argparse.ArgumentParser(description="Replay captured shairport-sync metadata for debugging")
     parser.add_argument("capture_file", help="Path to captured metadata file (JSONL format)")
-    parser.add_argument("--no-fast-forward", action="store_true", help="Disable fast-forwarding through idle periods")
     parser.add_argument(
-        "--max-gap", type=float, default=2.0, help="Maximum gap in seconds to preserve in real-time (default: 2.0)"
+        "--no-fast-forward",
+        action="store_true",
+        help="Disable fast-forwarding through idle periods",
     )
-    parser.add_argument("--info-only", action="store_true", help="Show capture file info without replaying")
+    parser.add_argument(
+        "--max-gap",
+        type=float,
+        default=2.0,
+        help="Maximum gap in seconds to preserve in real-time (default: 2.0)",
+    )
+    parser.add_argument(
+        "--info-only",
+        action="store_true",
+        help="Show capture file info without replaying",
+    )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
@@ -31,7 +37,9 @@ def main():
     # Create replay instance
     try:
         replay = MetadataReplay(
-            args.capture_file, fast_forward_gaps=not args.no_fast_forward, max_gap_seconds=args.max_gap
+            args.capture_file,
+            fast_forward_gaps=not args.no_fast_forward,
+            max_gap_seconds=args.max_gap,
         )
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)

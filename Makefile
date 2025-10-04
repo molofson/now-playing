@@ -1,5 +1,10 @@
 # Makefile for now-playing project
-# Compatible with local devel# ─── Install Dev Requirements ────────────────────────────────────────
+# Compatible with local development and container environments (Codespaces, DevContainers)
+# Automatically detects environment type and virtualenv tool availability
+
+.PHONY: format lint test coverage hooks install-dev install recreate-venv commit-ai check help env pre-commit-install ensure-venv
+
+# ─── Install Dev Requirements ────────────────────────────────────────
 install-dev:
 	@echo "Installing dev dependencies..."
 	python3 -m venv $(VENV)
@@ -12,10 +17,7 @@ install:
 	@echo "Installing production dependencies..."
 	python3 -m venv $(VENV)
 	$(PIP) install --upgrade pip
-	$(PIP) install -e . and container environments (Codespaces, DevContainers)
-# Automatically detects environment type and virtualenv tool availability
-
-.PHONY: format lint test coverage hooks install-dev install recreate-venv commit-ai check help env pre-commit-install ensure-venv
+	$(PIP) install -e .
 
 # ─── Environment Detection ───────────────────────────────────────────────
 ENV_DESC := $(shell \
@@ -67,8 +69,17 @@ type-check:
 test:
 	@echo "Running tests..."
 	@echo "Environment: $(ENV_DESC)"
-	@$(PYTEST) --cov=nowplaying \
+	@PYTHONPATH=$$(pwd) $(PYTEST) --cov=nowplaying \
 	           --cov-report=term-missing \
+	           tests/
+
+# ─── Run Tests (CI - skip integration tests) ─────────────────────────────
+test-ci:
+	@echo "Running tests (skipping integration tests)..."
+	@echo "Environment: $(ENV_DESC)"
+	@PYTHONPATH=$$(pwd) $(PYTEST) --cov=nowplaying \
+	           --cov-report=term-missing \
+	           -m "not integration" \
 	           tests/
 
 # ─── Test Coverage ───────────────────────────────────────────────────────
@@ -101,10 +112,10 @@ recreate-venv:
 	@echo "Virtual environment recreated."
 
 # ─── Run All Checks ──────────────────────────────────────────────────────
-check: format lint dead-code test
+check: hooks test
 
 # ─── CI Check (All Steps Used in GitHub Actions) ─────────────────────────
-ci-check: format lint dead-code type-check test coverage hooks
+ci-check: hooks test coverage
 
 # ─── Clean Generated Files ───────────────────────────────────────────────
 clean:
@@ -164,6 +175,6 @@ help:
 	@echo "  pre-commit-install  Install pre-commit hook into .git/hooks"
 	@echo ""
 	@echo "  # Composite Targets"
-	@echo "  check               Run basic dev checks (format + lint + dead-code + test)"
-	@echo "  ci-check            Run full CI validation (format, lint, dead-code, type-check, test, coverage, hooks)"
+	@echo "  check               Run quick dev checks (hooks + test)"
+	@echo "  ci-check            Run full CI validation (hooks + test + coverage)"
 	@echo ""

@@ -1,3 +1,5 @@
+"""Test script for metadata monitoring."""
+
 # nowplaying/test.py
 # Test script for metadata monitoring
 #
@@ -24,12 +26,14 @@ PIPE_PATH = "/tmp/shairport-sync-metadata"
 
 
 def print_metadata(metadata):
+    """Print metadata information."""
     print("Now Playing:")
     for key, value in metadata.items():
         print(f"  {key}: {value}")
 
 
 def handle_state(state: PlaybackState):
+    """Handle playback state changes."""
     print(f"Playback State Changed: {state}")
 
 

@@ -1,6 +1,4 @@
-"""
-Tests for the ShairportSyncPipeReader class and XML parsing functionality.
-"""
+"""Tests for the ShairportSyncPipeReader class and XML parsing functionality."""
 
 import base64
 from unittest.mock import Mock, patch
@@ -81,8 +79,23 @@ class TestShairportSyncPipeReader:
             self.reader.process_line(line)
 
         # Should dispatch complete metadata at the end
-        expected_metadata = {"album": "Test Album", "artist": "Test Artist", "title": "Test Song", "genre": "Rock"}
-        self.metadata_callback.assert_called_once_with(expected_metadata)
+        # Check that metadata callback was called once and contains expected fields
+        self.metadata_callback.assert_called_once()
+        call_args = self.metadata_callback.call_args[0][0]
+
+        # Verify expected metadata fields are present
+        expected_fields = {
+            "album": "Test Album",
+            "artist": "Test Artist",
+            "title": "Test Song",
+            "genre": "Rock",
+        }
+        for key, value in expected_fields.items():
+            assert call_args[key] == value, f"Expected {key}='{value}', got '{call_args.get(key)}'"
+
+        # Verify metadata includes ID and sequence number
+        assert "metadata_id" in call_args
+        assert "sequence_number" in call_args
 
     def test_state_changes_pcst(self):
         """Test play control state changes."""
@@ -177,12 +190,10 @@ class TestShairportSyncPipeReader:
 
         # Should not trigger state callback but should call metadata callback with cover art path
         self.state_callback.assert_not_called()
-        self.metadata_callback.assert_called_once()
 
-        # Check that metadata includes cover art path
-        metadata = self.metadata_callback.call_args[0][0]
-        assert "cover_art_path" in metadata
-        assert metadata["cover_art_path"].startswith("/tmp/cover_")
+        # Picture data without metadata bundle should not trigger metadata callback
+        # since there's no active metadata_id to update
+        self.metadata_callback.assert_not_called()
 
     def test_progress_info_handling(self):
         """Test progress information handling."""
@@ -276,8 +287,17 @@ class TestShairportSyncPipeReader:
         self.reader.process_line("<item><type>73736e63</type><code>6d64656e</code><length>0</length></item>")
 
         # Verify all fields were captured
+        self.metadata_callback.assert_called_once()
+        call_args = self.metadata_callback.call_args[0][0]
+
+        # Check all expected metadata fields
         expected_metadata = {field_name: data.decode() for _, field_name, data in metadata_tests}
-        self.metadata_callback.assert_called_once_with(expected_metadata)
+        for key, value in expected_metadata.items():
+            assert call_args[key] == value, f"Expected {key}='{value}', got '{call_args.get(key)}'"
+
+        # Verify metadata includes ID and sequence number
+        assert "metadata_id" in call_args
+        assert "sequence_number" in call_args
 
     def test_state_machine_integration(self):
         """Test that state changes integrate properly with metadata."""
@@ -295,8 +315,16 @@ class TestShairportSyncPipeReader:
         for line in lines:
             self.reader.process_line(line)
 
-        # Should have metadata
-        self.metadata_callback.assert_called_once_with({"album": "Album"})
+        # Should have metadata with ID and sequence
+        self.metadata_callback.assert_called_once()
+        call_args = self.metadata_callback.call_args[0][0]
+
+        # Check expected album field
+        assert call_args["album"] == "Album"
+
+        # Verify metadata includes ID and sequence number
+        assert "metadata_id" in call_args
+        assert "sequence_number" in call_args
 
         # Session end
         self.reader.process_line("<item><type>73736e63</type><code>70656e64</code><length>0</length></item>")
@@ -333,6 +361,140 @@ class TestShairportSyncPipeReader:
 
         # Should work correctly
         assert self.reader._current_metadata.get("artist") == "Artist"
+
+    def test_metadata_id_always_present(self):
+        """Test that metadata_id is always present and is a valid UUID."""
+        import uuid
+
+        # Start a metadata bundle (mdst = 0x6d647374)
+        self.reader.process_line("<item><type>73736e63</type><code>6d647374</code><length>0</length></item>")
+
+        # Test with a simple metadata item
+        lines = [
+            "<item><type>636f7265</type><code>6d646976</code><length>1</length>",
+            '<data encoding="base64">',
+            "MQ==",  # "1" in base64
+            "</data></item>",
+        ]
+
+        for line in lines:
+            self.reader.process_line(line)
+
+        # Verify metadata_id is present and is a valid UUID
+        assert "metadata_id" in self.reader._current_metadata
+        metadata_id = self.reader._current_metadata["metadata_id"]
+        assert metadata_id is not None
+
+        # Verify it's a valid UUID by parsing it
+        try:
+            uuid.UUID(metadata_id)
+        except ValueError:
+            pytest.fail(f"metadata_id '{metadata_id}' is not a valid UUID")
+
+    def test_sequence_number_increments(self):
+        """Test that sequence numbers increment with each metadata bundle."""
+        # Start first metadata bundle
+        self.reader.process_line("<item><type>73736e63</type><code>6d647374</code><length>0</length></item>")
+
+        # Process first metadata bundle
+        lines1 = [
+            "<item><type>636f7265</type><code>6d646976</code><length>1</length>",
+            '<data encoding="base64">',
+            "MQ==",  # "1" in base64
+            "</data></item>",
+        ]
+
+        for line in lines1:
+            self.reader.process_line(line)
+
+        first_sequence = self.reader._current_metadata.get("sequence_number")
+        assert first_sequence is not None
+        assert isinstance(first_sequence, str)  # sequence_number is stored as string
+        first_sequence_int = int(first_sequence)
+
+        # Start second metadata bundle
+        self.reader.process_line("<item><type>73736e63</type><code>6d647374</code><length>0</length></item>")
+
+        # Process second metadata bundle
+        lines2 = [
+            "<item><type>636f7265</type><code>61736172</code><length>6</length>",
+            '<data encoding="base64">',
+            base64.b64encode(b"Artist").decode(),
+            "</data></item>",
+        ]
+
+        for line in lines2:
+            self.reader.process_line(line)
+
+        second_sequence = self.reader._current_metadata.get("sequence_number")
+        assert second_sequence is not None
+        assert isinstance(second_sequence, str)  # sequence_number is stored as string
+        second_sequence_int = int(second_sequence)
+        assert second_sequence_int > first_sequence_int
+
+    def test_sequence_number_resets_on_new_reader(self):
+        """Test that sequence numbers start from a consistent value for new readers."""
+        # Create a new reader instance
+        from unittest.mock import Mock
+
+        new_reader = ShairportSyncPipeReader(state_callback=Mock(), metadata_callback=Mock())
+
+        # Start metadata bundle
+        new_reader.process_line("<item><type>73736e63</type><code>6d647374</code><length>0</length></item>")
+
+        # Process metadata
+        lines = [
+            "<item><type>636f7265</type><code>6d646976</code><length>1</length>",
+            '<data encoding="base64">',
+            "MQ==",  # "1" in base64
+            "</data></item>",
+        ]
+
+        for line in lines:
+            new_reader.process_line(line)
+
+        # First metadata should have sequence number 1
+        first_sequence = new_reader._current_metadata.get("sequence_number")
+        assert first_sequence == "1"
+
+    def test_metadata_id_unique_across_bundles(self):
+        """Test that each metadata bundle gets a unique metadata_id."""
+        # Start first metadata bundle
+        self.reader.process_line("<item><type>73736e63</type><code>6d647374</code><length>0</length></item>")
+
+        # Process first metadata bundle
+        lines1 = [
+            "<item><type>636f7265</type><code>6d646976</code><length>1</length>",
+            '<data encoding="base64">',
+            "MQ==",  # "1" in base64
+            "</data></item>",
+        ]
+
+        for line in lines1:
+            self.reader.process_line(line)
+
+        first_id = self.reader._current_metadata.get("metadata_id")
+
+        # Start second metadata bundle
+        self.reader.process_line("<item><type>73736e63</type><code>6d647374</code><length>0</length></item>")
+
+        # Process second metadata bundle
+        lines2 = [
+            "<item><type>636f7265</type><code>61736172</code><length>6</length>",
+            '<data encoding="base64">',
+            base64.b64encode(b"Artist").decode(),
+            "</data></item>",
+        ]
+
+        for line in lines2:
+            self.reader.process_line(line)
+
+        second_id = self.reader._current_metadata.get("metadata_id")
+
+        # Verify both IDs exist and are different
+        assert first_id is not None
+        assert second_id is not None
+        assert first_id != second_id
 
 
 if __name__ == "__main__":
