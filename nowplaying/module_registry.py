@@ -1,5 +1,6 @@
 """
 Module registry for extensible features, enhancements, and capabilities.
+
 Supports debug logging, enable/disable states, and future extensibility.
 """
 

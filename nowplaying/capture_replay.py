@@ -1,11 +1,11 @@
-"""
-Shairport-sync metadata capture and replay system for debugging.
-"""
+"""Shairport-sync metadata capture and replay system for debugging."""
 
+import contextlib
+import gzip
 import json
 import time
 from pathlib import Path
-from typing import Callable, Optional, TextIO
+from typing import Any, Callable, Iterator, Optional, TextIO
 
 from .module_registry import module_registry
 
@@ -52,7 +52,10 @@ class MetadataCapture:
     def start_capture(self) -> None:
         """Start capturing metadata to file."""
         try:
-            self._file_handle = open(self._capture_file, "w", encoding="utf-8")
+            # File handle must stay open for duration of capture session
+            self._file_handle = open(  # noqa: SIM115 - long-lived handle for streaming writes
+                self._capture_file, "w", encoding="utf-8"
+            )
             self._start_time = time.time()
             self._last_activity_time = self._start_time
 
@@ -105,7 +108,12 @@ class MetadataCapture:
             current_time = time.time()
             elapsed = current_time - self._start_time
 
-            entry = {"type": "event", "timestamp": elapsed, "event_type": event_type, "description": description}
+            entry = {
+                "type": "event",
+                "timestamp": elapsed,
+                "event_type": event_type,
+                "description": description,
+            }
 
             self._write_entry(entry)
             log.debug("Captured event: %s - %s", event_type, description)
@@ -126,12 +134,19 @@ class MetadataCapture:
             try:
                 # Write capture footer
                 end_time = time.time()
-                footer = {"type": "capture_footer", "end_time": end_time, "total_duration": end_time - self._start_time}
+                footer = {
+                    "type": "capture_footer",
+                    "end_time": end_time,
+                    "total_duration": end_time - self._start_time,
+                }
                 self._write_entry(footer)
 
                 self._file_handle.close()
                 self._file_handle = None
-                log.info("Stopped metadata capture. Duration: %.2f seconds", end_time - self._start_time)
+                log.info(
+                    "Stopped metadata capture. Duration: %.2f seconds",
+                    end_time - self._start_time,
+                )
             except Exception as e:
                 log.error("Error stopping capture: %s", e)
 
@@ -151,12 +166,17 @@ class MetadataCapture:
 class MetadataReplay:
     """Replays captured metadata with optional fast-forward through idle periods."""
 
-    def __init__(self, capture_file: str, fast_forward_gaps: bool = True, max_gap_seconds: float = 2.0):
+    def __init__(
+        self,
+        capture_file: str,
+        fast_forward_gaps: bool = True,
+        max_gap_seconds: float = 2.0,
+    ):
         """
         Initialize replay from captured file.
 
         Args:
-            capture_file: Path to captured metadata file
+            capture_file: Path to captured metadata file (supports .gz compression)
             fast_forward_gaps: Whether to fast-forward through idle periods
             max_gap_seconds: Maximum gap to preserve in real-time (larger gaps are fast-forwarded)
         """
@@ -170,8 +190,33 @@ class MetadataReplay:
 
         log.info("Metadata replay initialized: %s", self._capture_file)
 
+    def _is_gzipped(self) -> bool:
+        """Check if the capture file is gzipped."""
+        # First check by extension
+        if self._capture_file.suffix.lower() == ".gz":
+            return True
+
+        # Also check by reading the magic bytes
+        try:
+            with self._capture_file.open("rb") as f:
+                return f.read(2) == b"\x1f\x8b"
+        except Exception:
+            return False
+
+    @contextlib.contextmanager
+    def _open_file(self, mode: str = "r") -> Iterator[Any]:  # type: ignore[misc]
+        """Open the capture file, handling both regular and gzipped files."""
+        if self._is_gzipped():
+            with gzip.open(self._capture_file, mode + "t", encoding="utf-8") as f:
+                yield f
+        else:
+            with open(self._capture_file, mode, encoding="utf-8") as f:
+                yield f
+
     def replay(
-        self, line_callback: Callable[[str], None], event_callback: Optional[Callable[[str, str, float], None]] = None
+        self,
+        line_callback: Callable[[str], None],
+        event_callback: Optional[Callable[[str, str, float], None]] = None,
     ) -> None:
         """
         Replay captured metadata calling callbacks for each line/event.
@@ -181,7 +226,7 @@ class MetadataReplay:
             event_callback: Optional function to call for events (type, description, timestamp)
         """
         try:
-            with open(self._capture_file, "r", encoding="utf-8") as f:
+            with self._open_file() as f:
                 self._replay_from_file(f, line_callback, event_callback)
         except Exception as e:
             log.error("Error during replay: %s", e)
@@ -193,7 +238,7 @@ class MetadataReplay:
         line_callback: Callable[[str], None],
         event_callback: Optional[Callable[[str, str, float], None]],
     ) -> None:
-        """Internal replay implementation."""
+        """Implement internal replay."""
         capture_start_time = None
         last_timestamp = 0.0
         lines_processed = 0
@@ -246,7 +291,11 @@ class MetadataReplay:
                     # Fast-forward through long gaps
                     time_to_wait = min(time_to_wait, 0.1)  # Wait only 100ms instead
                     gaps_fast_forwarded += 1
-                    log.debug("Fast-forwarding %.2fs gap (originally %.2fs)", time_to_wait, gap_since_last)
+                    log.debug(
+                        "Fast-forwarding %.2fs gap (originally %.2fs)",
+                        time_to_wait,
+                        gap_since_last,
+                    )
 
                 if time_to_wait > 0:
                     time.sleep(time_to_wait)
@@ -263,7 +312,12 @@ class MetadataReplay:
                     event_callback(event_type, description, timestamp)
                 events_processed += 1
 
-                log.debug("Replayed event at %.2fs: %s - %s", timestamp, event_type, description)
+                log.debug(
+                    "Replayed event at %.2fs: %s - %s",
+                    timestamp,
+                    event_type,
+                    description,
+                )
 
             last_timestamp = timestamp
 
@@ -271,7 +325,8 @@ class MetadataReplay:
         """Get information about the capture file without replaying it."""
         info: dict = {
             "file_path": str(self._capture_file),
-            "file_size": int(self._capture_file.stat().st_size) if self._capture_file.exists() else 0,
+            "file_size": (int(self._capture_file.stat().st_size) if self._capture_file.exists() else 0),
+            "compressed": self._is_gzipped(),
             "line_count": 0,
             "event_count": 0,
             "duration": 0.0,
@@ -280,7 +335,7 @@ class MetadataReplay:
         }
 
         try:
-            with open(self._capture_file, "r", encoding="utf-8") as f:
+            with self._open_file() as f:
                 for line in f:
                     line = line.strip()
                     if not line:

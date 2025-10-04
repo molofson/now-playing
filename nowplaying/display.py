@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Simple placeholder for nowplaying display module.
+
 The full implementation is available in devtools/metadata_display.py
 """
 

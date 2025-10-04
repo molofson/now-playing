@@ -12,7 +12,21 @@ This feature is invaluable when bugs occur in production environments or with sp
 - **Event Tracking**: Captures state changes, errors, and other notable events
 - **Fast-Forward Replay**: Automatically speeds through idle periods during replay
 - **Lossless Reproduction**: Preserves exact timing and sequence of events
+- **Enrichment Data**: Captures and replays music enrichment data from external services
 - **Easy Integration**: Simple API for adding capture to any monitoring session
+
+## Enrichment Data Capture
+
+The capture system not only records raw shairport-sync metadata but also captures the results of music enrichment processing. This includes:
+
+- **Artist Information**: Biographies, tags, similar artists, tour dates
+- **Album Data**: Reviews, credits, discography, production details
+- **Social Metrics**: Scrobble counts, popularity scores, user tags
+- **Media Assets**: Cover art URLs, artist images
+- **Cross-Service Links**: MusicBrainz, Discogs, and Spotify identifiers
+- **Service Status**: Data freshness and enrichment completeness
+
+When replaying captured sessions, the enrichment data is restored, allowing you to test the full application experience with realistic data without requiring live API calls to external services.
 
 ## Capture Functionality
 
@@ -104,6 +118,7 @@ python devtools/replay_capture.py /tmp/captured_session.jsonl --verbose
 Capture files use JSON Lines (JSONL) format with the following structure:
 
 ### Header
+
 ```json
 {
   "type": "capture_header",
@@ -114,6 +129,7 @@ Capture files use JSON Lines (JSONL) format with the following structure:
 ```
 
 ### Metadata Lines
+
 ```json
 {
   "type": "metadata_line",
@@ -124,6 +140,7 @@ Capture files use JSON Lines (JSONL) format with the following structure:
 ```
 
 ### Events
+
 ```json
 {
   "type": "event",
@@ -134,10 +151,11 @@ Capture files use JSON Lines (JSONL) format with the following structure:
 ```
 
 ### Footer
+
 ```json
 {
   "type": "capture_footer",
-  "end_time": 1693123567.890,
+  "end_time": 1693123567.89,
   "total_duration": 111.101
 }
 ```
@@ -162,6 +180,7 @@ This is particularly useful when debugging issues that occur during long playbac
 ### Reproducing a Bug
 
 1. **Capture the problematic session**:
+
    ```bash
    python devtools/capture_metadata.py --output bug_reproduction.jsonl
    ```
@@ -216,14 +235,17 @@ def test_specific_metadata_sequence(self):
 ## Troubleshooting
 
 ### Large Capture Files
+
 - Use `--info-only` to check file size and duration before replay
 - Consider splitting long captures into smaller segments
 
 ### Timing Issues
+
 - Disable fast-forward if precise timing is critical
 - Adjust `max_gap_seconds` for different fast-forward behavior
 
 ### Missing Events
+
 - Ensure capture started before the problematic sequence
 - Check that all state transitions are being captured
 

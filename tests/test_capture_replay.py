@@ -1,16 +1,12 @@
-"""
-Tests for the metadata capture and replay functionality.
-"""
+"""Tests for the metadata capture and replay functionality."""
 
 import json
 import tempfile
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 from nowplaying.capture_replay import MetadataCapture, MetadataReplay, create_capture_filename
-from nowplaying.playback_state import PlaybackState
 
 
 class TestMetadataCapture(unittest.TestCase):

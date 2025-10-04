@@ -1,6 +1,4 @@
-"""
-Tests for the StateMonitor class (formerly MetadataMonitor).
-"""
+"""Tests for the StateMonitor class (formerly MetadataMonitor)."""
 
 import sys
 import time
@@ -8,6 +6,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from nowplaying.config import StateMonitorConfig
 from nowplaying.metadata_monitor import MetadataMonitor, StateMonitor
 from nowplaying.metadata_reader import ShairportSyncPipeReader
 from nowplaying.playback_state import PlaybackState
@@ -17,6 +16,7 @@ class TestShairportSyncPipeReader:
     """Test the ShairportSyncPipeReader class for XML parsing (basic compatibility tests)."""
 
     def setup_method(self):
+        """Set up test method fixtures."""
         self.state_callback = Mock()
         self.metadata_callback = Mock()
         self.reader = ShairportSyncPipeReader(
@@ -64,14 +64,22 @@ class TestShairportSyncPipeReader:
             self.reader.process_line(line)
 
         # Should dispatch complete metadata bundle
-        self.metadata_callback.assert_called_once_with(
-            {
-                "artist": "Test Artist",
-                "album": "Test Album",
-                "title": "Test Song",
-                "genre": "Rock",
-            }
-        )
+        self.metadata_callback.assert_called_once()
+        call_args = self.metadata_callback.call_args[0][0]
+
+        # Verify expected metadata fields are present
+        expected_fields = {
+            "artist": "Test Artist",
+            "album": "Test Album",
+            "title": "Test Song",
+            "genre": "Rock",
+        }
+        for key, value in expected_fields.items():
+            assert call_args[key] == value, f"Expected {key}='{value}', got '{call_args.get(key)}'"
+
+        # Verify metadata includes ID and sequence number
+        assert "metadata_id" in call_args
+        assert "sequence_number" in call_args
 
     def test_ignore_empty_lines(self):
         """Test that empty lines are ignored."""
@@ -86,6 +94,7 @@ class TestStateMonitor:
     """Test the StateMonitor class."""
 
     def setup_method(self):
+        """Set up test method fixtures."""
         self.state_callback = Mock()
         self.metadata_callback = Mock()
         self.monitor = StateMonitor(state_callback=self.state_callback, metadata_callback=self.metadata_callback)
@@ -105,6 +114,7 @@ class TestShutdownImprovements:
     """Test the shutdown improvements made to fix hanging issues."""
 
     def setup_method(self):
+        """Set up test method fixtures."""
         self.state_callback = Mock()
         self.metadata_callback = Mock()
 
@@ -183,7 +193,9 @@ class TestShutdownImprovements:
         mock_select.return_value = ([], [], [])
 
         monitor = StateMonitor(
-            pipe_path="/fake/pipe", state_callback=self.state_callback, metadata_callback=self.metadata_callback
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
         )
 
         # Start and stop quickly
@@ -354,6 +366,625 @@ class TestMetadataMonitorCompatibility:
         # Manual state setting should still work
         monitor.set_state(PlaybackState.PLAYING)
         state_callback.assert_called_once_with(PlaybackState.PLAYING)
+
+
+class TestStateMonitorCapture:
+    """Test capture functionality in StateMonitor."""
+
+    def setup_method(self):
+        """Set up test method fixtures."""
+        self.state_callback = Mock()
+        self.metadata_callback = Mock()
+
+    @patch("nowplaying.metadata_monitor.MetadataCapture")
+    def test_capture_initialization(self, mock_capture_class):
+        """Test that capture is initialized when capture_file is provided."""
+        mock_capture = Mock()
+        mock_capture_class.return_value = mock_capture
+
+        monitor = StateMonitor(
+            capture_file="/tmp/test_capture.json",
+            compress_images=True,
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # Verify capture was created with correct parameters
+        mock_capture_class.assert_called_once_with("/tmp/test_capture.json", True)
+        assert monitor._capture == mock_capture
+
+    @patch("nowplaying.metadata_monitor.MetadataCapture")
+    def test_capture_start_and_stop(self, mock_capture_class):
+        """Test that capture start and stop methods are called."""
+        mock_capture = Mock()
+        mock_capture_class.return_value = mock_capture
+
+        monitor = StateMonitor(
+            pipe_path="/fake/pipe",
+            capture_file="/tmp/test_capture.json",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        with patch("threading.Thread"):
+            monitor.start()
+            mock_capture.start_capture.assert_called_once()
+            mock_capture.capture_event.assert_called_with("monitor_start", "Started monitoring pipe: /fake/pipe")
+
+        monitor.stop()
+        mock_capture.capture_event.assert_called_with("monitor_stop", "Stopping metadata monitor")
+        mock_capture.stop_capture.assert_called_once()
+
+    @patch("nowplaying.metadata_monitor.MetadataCapture")
+    def test_capture_line_during_reading(self, mock_capture_class):
+        """Test that lines are captured during pipe reading."""
+        mock_capture = Mock()
+        mock_capture_class.return_value = mock_capture
+
+        monitor = StateMonitor(
+            capture_file="/tmp/test_capture.json",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # Simulate the line capture that happens in _read_loop
+        monitor._capture = mock_capture
+        test_line = "<item>test data</item>"
+
+        # This simulates what happens in the read loop when capture is enabled
+        if monitor._capture:
+            monitor._capture.capture_line(test_line)
+
+        mock_capture.capture_line.assert_called_once_with(test_line)
+
+    @patch("nowplaying.metadata_monitor.MetadataCapture")
+    def test_capture_state_transitions(self, mock_capture_class):
+        """Test that state transitions are captured."""
+        mock_capture = Mock()
+        mock_capture_class.return_value = mock_capture
+
+        monitor = StateMonitor(
+            capture_file="/tmp/test_capture.json",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # Trigger a state transition
+        monitor._transition_state(PlaybackState.PLAYING, "test transition")
+
+        # Should capture the state change
+        mock_capture.capture_event.assert_called_with(
+            "state_change",
+            f"{PlaybackState.NO_SESSION.name} -> {PlaybackState.PLAYING.name}: test transition",
+        )
+
+
+class TestStateMonitorConfiguration:
+    """Test configuration handling in StateMonitor."""
+
+    def setup_method(self):
+        """Set up test method fixtures."""
+        self.state_callback = Mock()
+        self.metadata_callback = Mock()
+
+    def test_default_configuration(self):
+        """Test that default configuration is used when none provided."""
+        monitor = StateMonitor(
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        assert monitor._config is not None
+        assert isinstance(monitor._config, StateMonitorConfig)
+
+    def test_custom_configuration(self):
+        """Test that custom configuration is used when provided."""
+        custom_config = StateMonitorConfig()
+        custom_config.wait_timeout_seconds = 5.0
+
+        monitor = StateMonitor(
+            config=custom_config,
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        assert monitor._config == custom_config
+        assert monitor._config.wait_timeout_seconds == 5.0
+
+    def test_pipe_path_from_config(self):
+        """Test that pipe path is taken from config when not specified."""
+        custom_config = StateMonitorConfig()
+
+        with patch.object(custom_config, "get_effective_pipe_path", return_value="/config/pipe/path"):
+            monitor = StateMonitor(
+                config=custom_config,
+                state_callback=self.state_callback,
+                metadata_callback=self.metadata_callback,
+            )
+
+            assert monitor._pipe_path == "/config/pipe/path"
+
+    def test_pipe_path_parameter_override(self):
+        """Test that pipe_path parameter overrides config."""
+        custom_config = StateMonitorConfig()
+
+        with patch.object(custom_config, "get_effective_pipe_path", return_value="/config/pipe/path"):
+            monitor = StateMonitor(
+                pipe_path="/override/pipe/path",
+                config=custom_config,
+                state_callback=self.state_callback,
+                metadata_callback=self.metadata_callback,
+            )
+
+            assert monitor._pipe_path == "/override/pipe/path"
+
+
+class TestStateMonitorReadLoop:
+    """Test the read loop functionality."""
+
+    def setup_method(self):
+        """Set up test method fixtures."""
+        self.state_callback = Mock()
+        self.metadata_callback = Mock()
+
+    @patch("builtins.open")
+    @patch("select.select")
+    def test_read_loop_with_data(self, mock_select, mock_open_func):
+        """Test read loop when data is available."""
+        if sys.platform == "win32":
+            pytest.skip("select() not supported on Windows pipes")
+
+        # Create a mock file object with proper behavior
+        mock_file = Mock()
+        mock_file.readline.side_effect = ["<item>test</item>\n", ""]  # Data then EOF
+        mock_file.closed = False
+        mock_open_func.return_value = mock_file
+        mock_select.side_effect = [([mock_file], [], []), ([mock_file], [], [])]
+
+        monitor = StateMonitor(
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # Mock the metadata reader to avoid complex parsing
+        monitor._metadata_reader.process_line = Mock()
+
+        # Run the read loop
+        monitor._read_loop()
+
+        # Verify pipe was opened and data was processed
+        mock_open_func.assert_called_once_with("/fake/pipe", "r")
+        monitor._metadata_reader.process_line.assert_called_with("<item>test</item>\n")
+
+    @patch("builtins.open")
+    @patch("select.select")
+    def test_read_loop_eof_handling(self, mock_select, mock_open_func):
+        """Test read loop handles EOF correctly."""
+        if sys.platform == "win32":
+            pytest.skip("select() not supported on Windows pipes")
+
+        mock_file = Mock()
+        mock_file.readline.return_value = ""  # EOF
+        mock_open_func.return_value = mock_file
+        mock_select.return_value = ([mock_file], [], [])
+
+        monitor = StateMonitor(
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # Run the read loop - should exit on EOF
+        monitor._read_loop()
+
+        # Verify file was closed
+        mock_file.close.assert_called()
+
+    @patch("builtins.open")
+    @patch("select.select")
+    def test_read_loop_exception_handling(self, mock_select, mock_open_func):
+        """Test read loop handles exceptions correctly."""
+        if sys.platform == "win32":
+            pytest.skip("select() not supported on Windows pipes")
+
+        mock_file = Mock()
+        mock_file.closed = False
+        mock_file.readline.side_effect = OSError("Pipe error")
+        mock_open_func.return_value = mock_file
+        mock_select.return_value = ([mock_file], [], [])
+
+        monitor = StateMonitor(
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        with patch("nowplaying.metadata_monitor.log") as mock_log:
+            # Set stop_event to False initially to ensure we enter the exception handling
+            with patch.object(monitor._stop_event, "is_set", return_value=False):
+                monitor._read_loop()
+
+            # Should log the error
+            mock_log.error.assert_called_with("Error reading line from pipe: %s", mock_file.readline.side_effect)
+
+    @patch("builtins.open")
+    @patch("select.select")
+    def test_read_loop_first_data_received(self, mock_select, mock_open_func):
+        """Test read loop sets playing state on first data received."""
+        if sys.platform == "win32":
+            pytest.skip("select() not supported on Windows pipes")
+
+        # Create mock file that returns data once then EOF
+        mock_file = Mock()
+        mock_file.readline.side_effect = ["<item>test</item>\n", ""]  # Data then EOF
+        mock_file.closed = False
+        mock_open_func.return_value = mock_file
+        mock_select.side_effect = [([mock_file], [], []), ([mock_file], [], [])]
+
+        monitor = StateMonitor(
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        monitor._metadata_reader.process_line = Mock()
+
+        # Run the read loop
+        monitor._read_loop()
+
+        # Should transition to UNDETERMINED when pipe opens, then PLAYING on first data
+        # Check that PLAYING was called (it might be the second call after UNDETERMINED)
+        state_calls = [call[0][0] for call in self.state_callback.call_args_list]
+        assert PlaybackState.PLAYING in state_calls
+
+    @patch("builtins.open")
+    @patch("select.select")
+    def test_read_loop_waiting_timer_cancellation(self, mock_select, mock_open_func):
+        """Test read loop cancels waiting timer when data is received."""
+        if sys.platform == "win32":
+            pytest.skip("select() not supported on Windows pipes")
+
+        mock_file = Mock()
+        mock_file.readline.side_effect = ["<item>test</item>\n", ""]
+        mock_file.closed = False
+        mock_open_func.return_value = mock_file
+        mock_select.side_effect = [([mock_file], [], []), ([mock_file], [], [])]
+
+        monitor = StateMonitor(
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # Set up a mock waiting timer
+        mock_timer = Mock()
+        monitor._waiting_timer = mock_timer
+        monitor._metadata_reader.process_line = Mock()
+
+        # Run one iteration
+        with patch.object(monitor._stop_event, "is_set", side_effect=[False, True]):
+            monitor._read_loop()
+
+        # Timer should have been cancelled and set to None
+        mock_timer.cancel.assert_called_once()
+        assert monitor._waiting_timer is None
+
+    def test_read_loop_windows_fallback(self):
+        """Test read loop fallback behavior on Windows."""
+        if sys.platform != "win32":
+            pytest.skip("Windows-specific test")
+
+        monitor = StateMonitor(
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # On Windows, the select branch should be skipped
+        # This test mainly ensures Windows doesn't crash
+        with patch("builtins.open", side_effect=FileNotFoundError), patch(
+            "nowplaying.metadata_monitor.log"
+        ) as mock_log:
+            monitor._read_loop()
+            mock_log.error.assert_called()
+
+
+class TestStateMonitorDefaultCallbacks:
+    """Test default callback functionality."""
+
+    @patch("nowplaying.metadata_monitor.log_metadata")
+    def test_default_metadata_callback(self, mock_log_metadata):
+        """Test default metadata callback logs metadata."""
+        monitor = StateMonitor()
+
+        test_metadata = {"artist": "Test Artist", "title": "Test Song"}
+        monitor._default_metadata_callback(test_metadata)
+
+        mock_log_metadata.info.assert_called_once_with("Published metadata: %s", test_metadata)
+
+    @patch("nowplaying.metadata_monitor.log_state")
+    def test_default_state_callback(self, mock_log_state):
+        """Test default state callback logs state changes."""
+        monitor = StateMonitor()
+
+        monitor._default_state_callback(PlaybackState.PLAYING)
+
+        mock_log_state.info.assert_called_once_with("Published state: %s", PlaybackState.PLAYING)
+
+    def test_default_callbacks_used_when_none_provided(self):
+        """Test default callbacks are used when none provided."""
+        monitor = StateMonitor()
+
+        # Should use default callbacks
+        assert monitor._metadata_callback == monitor._default_metadata_callback
+        assert monitor._state_callback == monitor._default_state_callback
+
+
+class TestStateMonitorSessionEndHandling:
+    """Test session end metadata clearing functionality."""
+
+    def setup_method(self):
+        """Set up test method fixtures."""
+        self.state_callback = Mock()
+        self.metadata_callback = Mock()
+
+    @patch("nowplaying.metadata_monitor.log_metadata")
+    @patch("uuid.uuid4")
+    def test_clear_metadata_for_session_end(self, mock_uuid, mock_log_metadata):
+        """Test metadata clearing when session ends."""
+        mock_uuid.return_value = "test-uuid-12345"
+
+        monitor = StateMonitor(
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        monitor._clear_metadata_for_session_end()
+
+        # Should log the clearing
+        mock_log_metadata.info.assert_called_once_with("Clearing metadata for session end")
+
+        # Should call metadata callback with empty metadata
+        expected_metadata = {
+            "metadata_id": "test-uuid-12345",
+            "sequence_number": "0",
+            "artist": "",
+            "album": "",
+            "title": "",
+            "genre": "",
+            "cover_art_path": None,
+        }
+        self.metadata_callback.assert_called_once_with(expected_metadata)
+
+    def test_session_end_triggers_metadata_clearing(self):
+        """Test that transitioning to NO_SESSION clears metadata."""
+        monitor = StateMonitor(
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        with patch.object(monitor, "_clear_metadata_for_session_end") as mock_clear:
+            # First transition to a different state so NO_SESSION is actually a change
+            monitor.set_state(PlaybackState.PLAYING)
+
+            # Then transition to NO_SESSION which should trigger metadata clearing
+            monitor.set_state(PlaybackState.NO_SESSION)
+
+            mock_clear.assert_called_once()
+
+
+class TestStateMonitorWarnings:
+    """Test warning conditions and edge cases."""
+
+    def setup_method(self):
+        """Set up test method fixtures."""
+        self.state_callback = Mock()
+        self.metadata_callback = Mock()
+
+    @patch("nowplaying.metadata_monitor.log")
+    def test_start_already_running_warning(self, mock_log):
+        """Test warning when trying to start already running monitor."""
+        monitor = StateMonitor(
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # Mock a running thread
+        mock_thread = Mock()
+        mock_thread.is_alive.return_value = True
+        monitor._thread = mock_thread
+
+        monitor.start()
+
+        mock_log.warning.assert_called_with("StateMonitor is already running.")
+
+    @patch("nowplaying.metadata_monitor.log")
+    def test_start_no_pipe_path_warning(self, mock_log):
+        """Test warning when no pipe path is provided."""
+        monitor = StateMonitor(
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # Ensure pipe path is None
+        monitor._pipe_path = None
+
+        monitor.start()
+
+        # Check that the warning was called with the correct message
+        warning_calls = [
+            call
+            for call in mock_log.warning.call_args_list
+            if "No pipe path provided, running in manual mode." in str(call)
+        ]
+        assert len(warning_calls) > 0, f"Expected warning not found. Calls: {mock_log.warning.call_args_list}"
+
+    def test_del_cleanup(self):
+        """Test that __del__ calls stop if stop_event exists."""
+        monitor = StateMonitor(
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        with patch.object(monitor, "stop") as mock_stop:
+            monitor.__del__()
+            mock_stop.assert_called_once()
+
+    def test_del_cleanup_no_stop_event(self):
+        """Test that __del__ handles missing stop_event gracefully."""
+        monitor = StateMonitor(
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # Remove stop_event to simulate incomplete initialization
+        delattr(monitor, "_stop_event")
+
+        # Should not raise exception
+        monitor.__del__()
+
+
+class TestStateMonitorStateTransitions:
+    """Test state transition handling with state machine validation."""
+
+    def setup_method(self):
+        """Set up test method fixtures."""
+        self.state_callback = Mock()
+        self.metadata_callback = Mock()
+
+    def test_transition_state_vs_force_transition(self):
+        """Test difference between normal and forced state transitions."""
+        monitor = StateMonitor(
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # Test forced transition (bypasses validation) - this should always work
+        monitor._force_transition_state(PlaybackState.PLAYING, "forced transition")
+
+        # Test normal transition (uses state machine validation) - this might fail validation
+        monitor._transition_state(PlaybackState.STOPPED, "normal transition")
+
+        # At least the forced transition should result in a state callback
+        assert self.state_callback.call_count >= 1
+
+        # Verify we can get the current state
+        current_state = monitor.get_state()
+        assert current_state in [PlaybackState.PLAYING, PlaybackState.STOPPED]
+
+
+class TestStateMonitorEdgeCases:
+    """Test edge cases and remaining uncovered code paths."""
+
+    def setup_method(self):
+        """Set up test method fixtures."""
+        self.state_callback = Mock()
+        self.metadata_callback = Mock()
+
+    @patch("builtins.open")
+    @patch("select.select")
+    def test_read_loop_closed_pipe_detection(self, mock_select, mock_open_func):
+        """Test read loop detects closed pipe and breaks."""
+        if sys.platform == "win32":
+            pytest.skip("select() not supported on Windows pipes")
+
+        mock_file = Mock()
+        mock_file.closed = True  # Pipe is closed
+        mock_open_func.return_value = mock_file
+        mock_select.return_value = ([mock_file], [], [])
+
+        monitor = StateMonitor(
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # Should exit early due to closed pipe
+        monitor._read_loop()
+
+        # readline should not be called if pipe is closed
+        mock_file.readline.assert_not_called()
+
+    @patch("builtins.open")
+    @patch("select.select")
+    def test_read_loop_waiting_timer_cancellation(self, mock_select, mock_open_func):
+        """Test read loop cancels waiting timer when data is received."""
+        if sys.platform == "win32":
+            pytest.skip("select() not supported on Windows pipes")
+
+        mock_file = Mock()
+        mock_file.readline.side_effect = ["<item>test</item>\n", ""]
+        mock_file.closed = False
+        mock_open_func.return_value = mock_file
+        mock_select.side_effect = [([mock_file], [], []), ([mock_file], [], [])]
+
+        monitor = StateMonitor(
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        # Set up a waiting timer
+        mock_timer = Mock()
+        monitor._waiting_timer = mock_timer
+        monitor._metadata_reader.process_line = Mock()
+
+        # Run read loop
+        monitor._read_loop()
+
+        # Timer should have been cancelled
+        mock_timer.cancel.assert_called_once()
+        assert monitor._waiting_timer is None
+
+    def test_windows_read_loop_fallback(self):
+        """Test that Windows fallback path doesn't crash."""
+        # Force Windows behavior by patching sys.platform
+        with patch("nowplaying.metadata_monitor.sys.platform", "win32"):
+            monitor = StateMonitor(
+                pipe_path="/fake/pipe",
+                state_callback=self.state_callback,
+                metadata_callback=self.metadata_callback,
+            )
+
+            # Mock file operations to avoid actual file access
+            with patch("builtins.open", side_effect=FileNotFoundError("No pipe")), patch(
+                "nowplaying.metadata_monitor.log"
+            ) as mock_log:
+                monitor._read_loop()
+                # Should log error about pipe opening failure
+                mock_log.error.assert_called()
+
+    @patch("nowplaying.metadata_monitor.log")
+    def test_start_with_pipe_path_info_logging(self, mock_log):
+        """Test that start() logs info when pipe path is provided."""
+        monitor = StateMonitor(
+            pipe_path="/fake/pipe",
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        with patch("threading.Thread"):
+            monitor.start()
+
+        # Should log the info message
+        mock_log.info.assert_called_with("Starting StateMonitor with pipe: %s", "/fake/pipe")
+
+
+if __name__ == "__main__":
+
+    def test_handle_state_change_from_metadata_reader(self):
+        """Test state changes triggered by metadata reader."""
+        monitor = StateMonitor(
+            state_callback=self.state_callback,
+            metadata_callback=self.metadata_callback,
+        )
+
+        with patch.object(monitor, "_transition_state") as mock_transition:
+            monitor._handle_state_change(PlaybackState.PLAYING)
+
+            mock_transition.assert_called_once_with(PlaybackState.PLAYING, "metadata event")
 
 
 if __name__ == "__main__":

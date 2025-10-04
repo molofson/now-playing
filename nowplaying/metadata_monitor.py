@@ -1,11 +1,11 @@
-"""
-Monitors playback state and metadata by reading directly from shairport-sync pipe.
-"""
+"""Monitors playback state and metadata by reading directly from shairport-sync pipe."""
 
+import contextlib
 import logging
 import select
 import sys
 import threading
+import uuid
 from typing import Callable, Optional
 
 from .capture_replay import MetadataCapture
@@ -114,10 +114,8 @@ class StateMonitor:
 
         # Close pipe first to unblock any reads
         if self._pipe_fd:
-            try:
+            with contextlib.suppress(Exception):
                 self._pipe_fd.close()
-            except Exception:
-                pass  # Ignore close errors
             self._pipe_fd = None
 
         # Join thread with timeout
@@ -148,6 +146,10 @@ class StateMonitor:
             log_state.info("State transition: %s -> %s (%s)", current_state, new_state, reason)
             self._state_callback(new_state)
 
+            # Clear metadata when session ends completely
+            if new_state == PlaybackState.NO_SESSION:
+                self._clear_metadata_for_session_end()
+
         # Start waiting timer for certain states
         self._start_waiting_timer_if_needed(new_state)
 
@@ -165,16 +167,20 @@ class StateMonitor:
         """Start waiting timer for states that need it."""
         if new_state in (PlaybackState.PAUSED, PlaybackState.STOPPED):
             self._waiting_timer = threading.Timer(
-                self._config.wait_timeout_seconds, lambda: self._transition_state(PlaybackState.WAITING, "timeout")
+                self._config.wait_timeout_seconds,
+                lambda: self._transition_state(PlaybackState.WAITING, "timeout"),
             )
             self._waiting_timer.start()
 
     def _read_loop(self) -> None:
-        """Main read loop for processing pipe data."""
+        """Run main read loop for processing pipe data."""
         log.info("Metadata thread started")
 
         try:
-            self._pipe_fd = open(self._pipe_path, "r")
+            # Pipe must stay open for duration of monitoring thread
+            self._pipe_fd = open(  # noqa: SIM115 - long-lived handle needs to stay open for thread lifetime
+                self._pipe_path, "r"
+            )
             self._transition_state(PlaybackState.UNDETERMINED, "pipe opened")
 
             # Use select for interruptible reading
@@ -249,18 +255,37 @@ class StateMonitor:
             if new_state != current_state:
                 self._state_callback(new_state)
 
+                # Clear metadata when session ends completely
+                if new_state == PlaybackState.NO_SESSION:
+                    self._clear_metadata_for_session_end()
+
             # Start waiting timer for certain states
             self._start_waiting_timer_if_needed(new_state)
 
+    def _clear_metadata_for_session_end(self) -> None:
+        """Clear metadata when a session ends."""
+        log_metadata.info("Clearing metadata for session end")
+        empty_metadata = {
+            "metadata_id": str(uuid.uuid4()),
+            "sequence_number": "0",
+            "artist": "",
+            "album": "",
+            "title": "",
+            "genre": "",
+            "cover_art_path": None,
+        }
+        self._metadata_callback(empty_metadata)
+
     def _default_metadata_callback(self, metadata: dict) -> None:
-        """Default metadata callback that logs published metadata."""
+        """Log published metadata."""
         log_metadata.info("Published metadata: %s", metadata)
 
     def _default_state_callback(self, state: PlaybackState) -> None:
-        """Default state callback that logs published state changes."""
+        """Log published state changes."""
         log_state.info("Published state: %s", state)
 
     def __del__(self):
+        """Clean up resources on deletion."""
         if hasattr(self, "_stop_event"):
             self.stop()
 

@@ -1,0 +1,9 @@
+[flake8]
+max-line-length = 120
+exclude = .venv,__pycache__,.git,htmlcov,*.egg-info,build,dist
+# E501: line too long (handled by black)
+# E203: whitespace before ':' (conflicts with black)
+# E402: module level import not at top
+# D202: blank line after docstring (Black adds these per PEP 257)
+# I1xx/I2xx: import order (delegated to isort)
+extend-ignore = E501,E203,E402,D202,I100,I101,I201,I202

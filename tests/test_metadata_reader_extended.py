@@ -1,13 +1,11 @@
-"""
-Extended tests for ShairportSyncPipeReader covering newer functionality like
-cover art handling, binary data detection, and comprehensive DMAP support.
+"""Extended tests for ShairportSyncPipeReader.
+
+Covers newer functionality like cover art handling, binary data detection,
+and comprehensive DMAP support.
 """
 
 import base64
-import os
 import struct
-import tempfile
-import time
 from unittest.mock import Mock, patch
 
 import pytest
@@ -62,7 +60,9 @@ class TestShairportSyncPipeReaderExtended:
 
             # Should be detected as binary due to null characters
             mock_log.debug.assert_called_with(
-                "Core metadata %s: <binary data, %d bytes>", "artist", len(text_with_nulls.encode())
+                "Core metadata %s: <binary data, %d bytes>",
+                "artist",
+                len(text_with_nulls.encode()),
             )
             assert "artist" not in self.reader._current_metadata
 
@@ -92,8 +92,14 @@ class TestShairportSyncPipeReaderExtended:
         jpeg_data = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb\x00C\x00"
         encoded_data = base64.b64encode(jpeg_data).decode()
 
-        # Set up album metadata first
-        self.reader._current_metadata = {"album": "Test Album"}
+        # Start a metadata bundle to provide context for cover art
+        self.reader.process_line("<item><type>73736e63</type><code>6d647374</code><length>0</length></item>")
+
+        # Set up album metadata
+        album_data = base64.b64encode(b"Test Album").decode()
+        self.reader.process_line(
+            f'<item><type>636f7265</type><code>6173616c</code><length>10</length><data encoding="base64">{album_data}</data></item>'
+        )
 
         # Send PICT data
         xml_line = f'<item><type>73736e63</type><code>50494354</code><length>{len(jpeg_data)}</length><data encoding="base64">{encoded_data}</data></item>'
@@ -280,7 +286,10 @@ class TestShairportSyncPipeReaderExtended:
             # The code 0x12345678 converts to ASCII '\x124Vx' so it logs as unknown DMAP
             ascii_code = struct.pack(">I", 0x12345678).decode("ascii", errors="replace")
             mock_log.debug.assert_called_with(
-                "Unknown DMAP 0x%08x ('%s'): <binary data, %d bytes>", 0x12345678, ascii_code, len(binary_data)
+                "Unknown DMAP 0x%08x ('%s'): <binary data, %d bytes>",
+                0x12345678,
+                ascii_code,
+                len(binary_data),
             )
 
     def test_ssnc_codes_comprehensive(self):
@@ -291,8 +300,16 @@ class TestShairportSyncPipeReaderExtended:
             (0x70656E64, None, PlaybackState.STOPPED),  # pend - play end
             (0x61656E64, None, PlaybackState.NO_SESSION),  # aend - active end
             (0x7072736D, None, PlaybackState.PLAYING),  # prsm - play resume
-            (0x70637374, "1", PlaybackState.PLAYING),  # pcst - play control state (playing)
-            (0x70637374, "0", PlaybackState.PAUSED),  # pcst - play control state (paused)
+            (
+                0x70637374,
+                "1",
+                PlaybackState.PLAYING,
+            ),  # pcst - play control state (playing)
+            (
+                0x70637374,
+                "0",
+                PlaybackState.PAUSED,
+            ),  # pcst - play control state (paused)
             # Non-state-changing codes (should not trigger state callback)
             (0x636C6970, "192.168.1.100", None),  # clip - client IP
             (0x73766970, "192.168.1.1", None),  # svip - server IP
@@ -387,7 +404,12 @@ class TestShairportSyncPipeReaderExtended:
         jpeg_data = b"\xff\xd8\xff\xe0test"
         encoded_data = base64.b64encode(jpeg_data).decode()
 
-        self.reader._current_metadata = {"album": "Test Album"}
+        # Start a metadata bundle and add album info
+        self.reader.process_line("<item><type>73736e63</type><code>6d647374</code><length>0</length></item>")
+        album_data = base64.b64encode(b"Test Album").decode()
+        self.reader.process_line(
+            f'<item><type>636f7265</type><code>6173616c</code><length>10</length><data encoding="base64">{album_data}</data></item>'
+        )
 
         xml_line = f'<item><type>73736e63</type><code>50494354</code><length>{len(jpeg_data)}</length><data encoding="base64">{encoded_data}</data></item>'
 

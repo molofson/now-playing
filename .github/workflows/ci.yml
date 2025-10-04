@@ -3,19 +3,17 @@
 #
 # Purpose:
 #   This workflow is the main continuous integration (CI) pipeline. It verifies:
-#     - Code formatting using `black`
-#     - Linting using `flake8` with bugbear
+#     - Code formatting, linting, type checking via pre-commit hooks
 #     - Unit testing via `pytest`
 #     - Test coverage reporting (terminal, XML for Codecov, HTML artifact)
-#     - Pre-commit hooks across all files for consistent style
 #   Tasks run inside an isolated `.venv` environment for reproducibility
 #   Makefile targets are used to ensure consistency between local and CI environments
 #   The workflow runs on all pushes, pull requests, and can be triggered manually via `workflow_dispatch`
 #
 # Discussion notes:
 #   - All Python tasks are isolated in a virtual environment (.venv)
-#   - Pre-commit hooks run early to enforce code hygiene (e.g. formatting, linting)
-#   - Format, lint, test, and coverage steps are Makefile-driven for local + CI parity
+#   - Pre-commit hooks run first to enforce code hygiene (black, isort, flake8, vulture, mypy, etc.)
+#   - Test and coverage steps are Makefile-driven for local + CI parity
 #   - HTML and XML coverage reports are generated for Codecov and GitHub artifact upload
 #   - This workflow runs on all pushes, PRs, and manual dispatch triggers
 #   - It serves as a signal check before merging — it does NOT alter files
@@ -45,20 +43,14 @@ jobs:
       - name: 📦 Install dev dependencies via Makefile
         run: make install-dev
 
-      - name: ✅ Run format check
-        run: make format
-
-      - name: 🔎 Run linter
-        run: make lint
+      - name: 🧼 Run pre-commit hooks (format, lint, type-check, etc.)
+        run: make hooks
 
       - name: 🧪 Run tests with coverage
-        run: make test
+        run: make test-ci
 
       - name: 📊 Generate coverage.xml and HTML reports
         run: make coverage
-
-      - name: 🧼 Run pre-commit hooks
-        run: make hooks
 
       - name: 💾 Upload HTML coverage report artifact
         uses: actions/upload-artifact@v4

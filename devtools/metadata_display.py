@@ -15,29 +15,43 @@
 # Usage:
 #   python3 devtools/metadata_display.py [--windowed|--fullscreen|--kiosk|--cli]
 
-import logging
+"""Pygame-based display application for now-playing metadata from shairport-sync.
+
+This module provides a graphical display for music metadata and playback state,
+with support for multiple display modes including fullscreen, windowed, and
+headless CLI operation. It integrates with the nowplaying package to show
+enriched metadata from various music services.
+"""
+
 import os
+
+# Suppress pygame startup messages - do this early so pygame does not print on import
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
+os.environ["PYGAME_DETECT_AVX2"] = "0"
+
+import logging
 import signal
 import sys
 import threading
 import time
 from typing import List, Optional, Tuple
 
-# Suppress pygame startup messages
-os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
-os.environ["PYGAME_DETECT_AVX2"] = "0"
+import pygame
 
-import pygame  # noqa: E402
-
-# Ensure the project root is in Python path for nowplaying module import
-script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(script_dir)
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-# Import the nowplaying module - must be run from project root
-from nowplaying.metadata_monitor import MetadataMonitor  # noqa: E402
-from nowplaying.module_registry import module_registry  # noqa: E402
+from nowplaying.metadata_monitor import MetadataMonitor
+from nowplaying.module_registry import module_registry
+from nowplaying.panels import (
+    AlbumEnrichmentPanel,
+    ArtistEnrichmentPanel,
+    ContentContext,
+    CoverArtPanel,
+    DiscographyPanel,
+    NowPlayingPanel,
+    ServiceStatusPanel,
+    SocialStatsPanel,
+    SongEnrichmentPanel,
+    VUMeterPanel,
+)
 
 # Simple configuration constants
 APP_TITLE = "Now Playing Display"
@@ -71,9 +85,8 @@ DEFAULT_STATE_TEXT = "waiting"
 DEFAULT_PIPE_PATH = "/tmp/shairport-sync-metadata"
 
 
-# ----------------- Logging Capture ----------------
 class TailBuffer:
-    """Simple thread-safe ring buffer for log lines."""
+    """Thread-safe ring buffer for log lines."""
 
     def __init__(self, capacity: int):
         """Initialize buffer with specified capacity for log entries."""
@@ -183,12 +196,15 @@ class DebugLogFilter(logging.Filter):
 
 
 class PygameLogHandler(logging.Handler):
+    """Custom logging handler that appends log records to a TailBuffer."""
+
     def __init__(self, tail: TailBuffer):
         """Initialize pygame log handler with tail buffer for log collection."""
         super().__init__()
         self.tail = tail
 
     def emit(self, record: logging.LogRecord):
+        """Emit a log record by appending it to the tail buffer."""
         try:
             msg = record.getMessage()
         except Exception:
@@ -213,8 +229,15 @@ class UIModel:
         self.cover_mtime: Optional[float] = None
         self._cover_surface: Optional[pygame.Surface] = None
 
+        # Enrichment data
+        self.enrichment_data: Optional[dict] = None
+
+        # Content context for panels
+        self.content_context = ContentContext()
+
     # Metadata callback from monitor
     def on_metadata(self, m: dict):
+        """Handle metadata updates from the metadata monitor."""
         with self._lock:
             self.artist = m.get("artist", self.artist)
             self.album = m.get("album", self.album)
@@ -230,13 +253,91 @@ class UIModel:
                 # Invalidate cached surface; reload in draw cycle
                 self._cover_surface = None
 
+            # Update content context
+            self.content_context.artist = self.artist
+            self.content_context.album = self.album
+            self.content_context.title = self.title
+            self.content_context.genre = self.genre
+            self.content_context.cover_art_path = self.cover_path
+
+            # Trigger enrichment if we have artist/album data
+            if self.artist or self.album:
+                self._trigger_enrichment()
+
     # State callback from monitor
     def on_state(self, s: str):
+        """Handle playback state changes from the metadata monitor."""
         with self._lock:
             self.state = s
+            # Update content context state
+            from nowplaying.playback_state import PlaybackState
+
+            # Convert string state to PlaybackState enum
+            try:
+                self.content_context.playback_state = getattr(PlaybackState, s.upper(), PlaybackState.NO_SESSION)
+            except AttributeError:
+                self.content_context.playback_state = PlaybackState.NO_SESSION
+
+    def _trigger_enrichment(self):
+        """Trigger enrichment for current metadata."""
+        # Import here to avoid circular imports
+        # Create enrichment request
+        from nowplaying.enrichment.base import ContentContext as EnrichmentContext
+        from nowplaying.enrichment.base import EnrichmentRequest
+        from nowplaying.enrichment.engine import enrichment_engine
+
+        enrichment_context = EnrichmentContext(track_id="", source="display")
+        request = EnrichmentRequest(artist=self.artist, album=self.album, title=self.title, context=enrichment_context)
+
+        # Run enrichment asynchronously
+        import asyncio
+
+        def run_enrichment():
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                result = loop.run_until_complete(enrichment_engine.enrich_async(request))
+                loop.close()
+
+                # Update enrichment data
+                with self._lock:
+                    self.enrichment_data = {
+                        "musicbrainz_artist_id": result.musicbrainz_artist_id,
+                        "musicbrainz_album_id": result.musicbrainz_album_id,
+                        "musicbrainz_track_id": result.musicbrainz_track_id,
+                        "discogs_artist_id": result.discogs_artist_id,
+                        "discogs_release_id": result.discogs_release_id,
+                        "spotify_artist_id": result.spotify_artist_id,
+                        "spotify_album_id": result.spotify_album_id,
+                        "artist_bio": result.artist_bio,
+                        "artist_tags": result.artist_tags,
+                        "similar_artists": result.similar_artists,
+                        "album_reviews": result.album_reviews,
+                        "album_credits": result.album_credits,
+                        "tour_dates": result.tour_dates,
+                        "recent_releases": result.recent_releases,
+                        "artist_discography": result.artist_discography,
+                        "scrobble_count": result.scrobble_count,
+                        "popularity_score": result.popularity_score,
+                        "user_tags": result.user_tags,
+                        "cover_art_urls": result.cover_art_urls,
+                        "artist_images": result.artist_images,
+                        "last_updated": dict(result.last_updated),
+                        "service_errors": dict(result.service_errors),
+                    }
+                    # Update content context with enrichment data
+                    self.content_context.enrichment_data = self.enrichment_data
+
+            except Exception as e:
+                logging.getLogger("display").warning(f"Enrichment failed: {e}")
+
+        # Run enrichment in background thread
+        enrichment_thread = threading.Thread(target=run_enrichment, daemon=True)
+        enrichment_thread.start()
 
     # Accessors for drawing thread
     def snapshot(self):
+        """Return a thread-safe snapshot of current metadata and state."""
         with self._lock:
             return {
                 "artist": self.artist,
@@ -246,6 +347,7 @@ class UIModel:
                 "state": self.state,
                 "cover_path": self.cover_path,
                 "cover_mtime": self.cover_mtime,
+                "enrichment_data": self.enrichment_data,
             }
 
     def _get_or_load_cover(self, target_size: Tuple[int, int]) -> Optional[pygame.Surface]:
@@ -325,12 +427,33 @@ class DisplayApp:
         self.last_drag_y = 0
         self.drag_threshold = 10  # pixels
         self.double_tap_threshold = 0.5  # seconds
+        self.swipe_threshold = 50  # pixels for swipe detection
+        self.swipe_velocity_threshold = 0.3  # pixels per ms for swipe detection
+
+        # Panel touch gesture state
+        self.panel_touch_active = False
+        self.panel_touch_start = None
+        self.panel_touch_start_time = 0
+
+        # Enrichment panel state
+        self.current_panel = 0
+        self.enrichment_panels = [
+            NowPlayingPanel(),
+            CoverArtPanel(),
+            ArtistEnrichmentPanel(),
+            AlbumEnrichmentPanel(),
+            SongEnrichmentPanel(),
+            DiscographyPanel(),
+            SocialStatsPanel(),
+            ServiceStatusPanel(),
+            VUMeterPanel(),
+        ]
 
         # Set up signal handling
         signal.signal(signal.SIGTERM, self._signal_handler)
         signal.signal(signal.SIGINT, self._signal_handler)
 
-    def _signal_handler(self, signum, frame):
+    def _signal_handler(self, signum, frame):  # noqa: U100
         """Handle shutdown signals gracefully."""
         logging.getLogger("display").info(f"Received signal {signum}, shutting down...")
         self.running = False
@@ -398,7 +521,14 @@ class DisplayApp:
             # Try to hide common Linux desktop panels
             for panel_class in ["panel", "lxpanel"]:
                 subprocess.run(
-                    ["xdotool", "search", "--onlyvisible", "--class", panel_class, "windowunmap"],
+                    [
+                        "xdotool",
+                        "search",
+                        "--onlyvisible",
+                        "--class",
+                        panel_class,
+                        "windowunmap",
+                    ],
                     capture_output=True,
                     timeout=1,
                 )
@@ -550,6 +680,11 @@ class DisplayApp:
                     self.toggle_debug()
                 elif event.key == pygame.K_f:
                     self.toggle_fullscreen()
+                elif event.key in (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_TAB):
+                    if event.key == pygame.K_LEFT:
+                        self.prev_panel()
+                    else:
+                        self.next_panel()
                 # Handle scrollback navigation keys
                 elif self.scrollback_mode and event.key == pygame.K_UP:
                     self.scroll_up()
@@ -559,7 +694,10 @@ class DisplayApp:
                     self.scroll_page_up()
                 elif self.scrollback_mode and event.key == pygame.K_PAGEDOWN:
                     self.scroll_page_down()
-                elif self.scrollback_mode and event.key in (pygame.K_ESCAPE, pygame.K_RETURN):
+                elif self.scrollback_mode and event.key in (
+                    pygame.K_ESCAPE,
+                    pygame.K_RETURN,
+                ):
                     self.exit_scrollback_mode()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left mouse button or touch
@@ -568,17 +706,21 @@ class DisplayApp:
                     # Right side is where logs are (right half of screen)
                     if mouse_x > screen_width // 2:
                         self.handle_touch_start(mouse_x, mouse_y)
+                    else:
+                        # Left side - panel navigation
+                        self.handle_panel_touch(mouse_x, mouse_y)
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:  # Left mouse button or touch
                     mouse_x, mouse_y = event.pos
                     screen_width = self.screen.get_width()
-                    if mouse_x > screen_width // 2:
-                        self.handle_touch_end(mouse_x, mouse_y)
+                    # Always handle touch end, but prioritize panel swipes
+                    self.handle_touch_end(mouse_x, mouse_y)
             elif event.type == pygame.MOUSEMOTION:
                 if self.touch_down:
                     mouse_x, mouse_y = event.pos
                     screen_width = self.screen.get_width()
-                    if mouse_x > screen_width // 2:
+                    # Handle panel touch motion or right-side scrolling
+                    if self.panel_touch_active or mouse_x > screen_width // 2:
                         self.handle_touch_drag(mouse_x, mouse_y)
             elif event.type == pygame.MOUSEWHEEL and self.scrollback_mode:
                 # Mouse wheel scrolling in scrollback mode
@@ -599,6 +741,10 @@ class DisplayApp:
         """Handle touch/mouse drag event."""
         if not self.touch_down or not self.touch_start_pos:
             return
+
+        # If this is a panel touch (started on left side), don't treat as log scrolling
+        if self.panel_touch_active:
+            return  # Panel swipes are handled in handle_touch_end
 
         # Calculate distance from start position
         start_x, start_y = self.touch_start_pos
@@ -637,6 +783,32 @@ class DisplayApp:
 
         self.touch_down = False
         current_time = time.time()
+
+        # Check for panel swipe gestures first
+        if self.panel_touch_active and self.panel_touch_start:
+            start_x, start_y = self.panel_touch_start
+            delta_x = x - start_x
+            delta_y = y - start_y
+            delta_time = current_time - self.panel_touch_start_time
+
+            # Check if this is a horizontal swipe
+            if abs(delta_x) > self.swipe_threshold and abs(delta_x) > abs(delta_y):
+                velocity = abs(delta_x) / max(delta_time, 0.001)  # pixels per second
+                if velocity > self.swipe_velocity_threshold * 1000:  # convert to pixels per second
+                    if delta_x > 0:
+                        # Swipe right - previous panel
+                        self.prev_panel()
+                    else:
+                        # Swipe left - next panel
+                        self.next_panel()
+                    # Reset panel touch state
+                    self.panel_touch_active = False
+                    self.panel_touch_start = None
+                    return
+
+        # Reset panel touch state
+        self.panel_touch_active = False
+        self.panel_touch_start = None
 
         # If this was a drag, don't process as tap
         if self.is_dragging:
@@ -698,19 +870,22 @@ class DisplayApp:
         status = "visible" if self.show_debug else "hidden"
         logging.getLogger("display").info(f"Debug messages now {status}")
 
-    def toggle_fullscreen(self):
-        """Toggle between fullscreen and windowed mode."""
-        self.use_fullscreen = not self.use_fullscreen
-        display_info = pygame.display.Info()
+    def next_panel(self):
+        """Switch to next enrichment panel."""
+        self.current_panel = (self.current_panel + 1) % len(self.enrichment_panels)
+        logging.getLogger("display").info(f"Switched to panel: {self.enrichment_panels[self.current_panel].info.name}")
 
-        if self.use_fullscreen:
-            self.screen = pygame.display.set_mode((display_info.current_w, display_info.current_h), pygame.FULLSCREEN)
-            pygame.mouse.set_visible(False)
-            pygame.event.set_grab(True)
-        else:
-            self.screen = pygame.display.set_mode((1280, 800))
-            pygame.mouse.set_visible(True)
-            pygame.event.set_grab(False)
+    def prev_panel(self):
+        """Switch to previous enrichment panel."""
+        self.current_panel = (self.current_panel - 1) % len(self.enrichment_panels)
+        logging.getLogger("display").info(f"Switched to panel: {self.enrichment_panels[self.current_panel].info.name}")
+
+    def handle_panel_touch(self, x, y):
+        """Handle touch events on the left panel area for swipe navigation."""
+        # Store touch start for swipe detection
+        self.panel_touch_start = (x, y)
+        self.panel_touch_start_time = time.time()
+        self.panel_touch_active = True
 
     def draw(self):
         """Draw the entire display."""
@@ -727,7 +902,7 @@ class DisplayApp:
         pygame.draw.line(screen, DIVIDER_COLOR, (mid_x, 0), (mid_x, height), 2)
 
         # Draw content
-        self._draw_metadata(left_rect)
+        self._draw_left_panel(left_rect)
         self._draw_logs(right_rect)
 
         pygame.display.flip()
@@ -784,61 +959,38 @@ class DisplayApp:
         else:
             return TEXT_COLOR
 
-    def _draw_metadata(self, rect: pygame.Rect):
-        """Draw the metadata panel."""
-        # Get current metadata
-        data = self.model.snapshot()
+    def _draw_left_panel(self, rect: pygame.Rect):
+        """Draw the left panel - either metadata or enrichment panels."""
+        # Get current enrichment panel
+        panel = self.enrichment_panels[self.current_panel]
 
-        # Title
+        # Update panel with current context
+        panel.update_context(self.model.content_context)
+
+        # Draw panel title
         title_y = rect.y + MARGIN
-        self._render_text(self.fonts["title"], "Now Playing", (rect.x + MARGIN, title_y), ACCENT_COLOR)
+        self._render_text(self.fonts["title"], panel.info.name, (rect.x + MARGIN, title_y), ACCENT_COLOR)
         title_y += self.fonts["title"].get_height() + 8
 
-        # Calculate space for metadata fields (5 lines + spacing)
-        meta_height = (self.fonts["meta"].get_height() + 6) * 5 + 20
+        # Draw subtitle
+        subtitle_text = panel.info.description
+        self._render_text(self.fonts["meta"], subtitle_text, (rect.x + MARGIN, title_y), TEXT_COLOR)
 
-        # Album art area
-        art_rect = pygame.Rect(
+        # Create content area for panel
+        content_rect = pygame.Rect(
             rect.x + MARGIN,
-            title_y,
+            title_y + self.fonts["meta"].get_height() + 10,
             rect.width - (MARGIN * 2),
-            rect.height - title_y - MARGIN - meta_height,
+            rect.bottom - title_y - self.fonts["meta"].get_height() - MARGIN - 20,
         )
 
-        # Draw album art or placeholder
-        cover = self.model._get_or_load_cover((art_rect.width, art_rect.height))
-        if cover:
-            # Center the cover art
-            art_x = art_rect.x + (art_rect.width - cover.get_width()) // 2
-            art_y = art_rect.y + (art_rect.height - cover.get_height()) // 2
-            self.screen.blit(cover, (art_x, art_y))
-        else:
-            # Draw placeholder
-            pygame.draw.rect(self.screen, DIVIDER_COLOR, art_rect, 2)
-            placeholder_text = self._render_text(
-                self.fonts["meta"], DEFAULT_COVER_TEXT, (0, 0), DIM_TEXT, return_surface=True
-            )
-            placeholder_x = art_rect.x + (art_rect.width - placeholder_text.get_width()) // 2
-            placeholder_y = art_rect.y + (art_rect.height - placeholder_text.get_height()) // 2
-            self.screen.blit(placeholder_text, (placeholder_x, placeholder_y))
+        # Draw panel content
+        panel.render(self.screen, content_rect)
 
-        # Draw metadata fields
-        y = rect.bottom - MARGIN - meta_height + 6
-        fields = [
-            ("Title", data["title"]),
-            ("Artist", data["artist"]),
-            ("Album", data["album"]),
-            ("Genre", data["genre"]),
-            ("State", data["state"]),
-        ]
-
-        for label, value in fields:
-            label_surface = self._render_text(self.fonts["meta"], f"{label}:", (0, 0), DIM_TEXT, return_surface=True)
-            value_surface = self._render_text(self.fonts["meta"], value or "-", (0, 0), TEXT_COLOR, return_surface=True)
-
-            self.screen.blit(label_surface, (rect.x + MARGIN, y))
-            self.screen.blit(value_surface, (rect.x + MARGIN + label_surface.get_width() + 12, y))
-            y += self.fonts["meta"].get_height() + 6
+        # Draw panel navigation hint
+        hint_text = "Swipe or ← → to navigate panels"
+        hint_y = rect.bottom - MARGIN - self.fonts["meta"].get_height()
+        self._render_text(self.fonts["meta"], hint_text, (rect.x + MARGIN, hint_y), DIM_TEXT)
 
     def _render_text(self, font, text: str, pos: tuple, color: tuple, return_surface: bool = False):
         """Render text and either blit to screen or return surface."""
@@ -885,7 +1037,10 @@ class DisplayApp:
             # Fallback for any other rendering issues - write to stderr for visibility
             import sys
 
-            print(f"DISPLAY ERROR: Text rendering error for '{text[:50]}...': {e}", file=sys.stderr)
+            print(
+                f"DISPLAY ERROR: Text rendering error for '{text[:50]}...': {e}",
+                file=sys.stderr,
+            )
             logging.getLogger("display").warning(f"Text rendering error for '{text[:50]}...': {e}")
             # Try with a simple safe character set
             safe_text = "".join(c if ord(c) < 128 else "?" for c in text)
@@ -899,7 +1054,10 @@ class DisplayApp:
                 # Ultimate fallback
                 import sys
 
-                print(f"DISPLAY ERROR: Critical text rendering failure: {e}", file=sys.stderr)
+                print(
+                    f"DISPLAY ERROR: Critical text rendering failure: {e}",
+                    file=sys.stderr,
+                )
                 fallback_text = "[render error]"
                 surface = font.render(fallback_text, True, color)
                 if return_surface:
@@ -914,7 +1072,7 @@ class DisplayApp:
         fast_forward=False,
         compress_images=False,
     ):
-        """Main application loop."""
+        """Run the main application loop."""
         try:
             if not self.headless:
                 self.setup_pygame()
@@ -971,7 +1129,7 @@ class DisplayApp:
 
 
 def main():
-    """Main entry point."""
+    """Provide the main entry point."""
     # Simple help
     if "--help" in sys.argv or "-h" in sys.argv:
         print("Now Playing Metadata Display")
@@ -1025,11 +1183,26 @@ def main():
         print("  Q, Esc         Quit")
         print("  D              Toggle debug messages")
         print("  F              Toggle fullscreen")
+        print("  Left/Right arrows     Navigate enrichment panels")
+        print("  Tab            Next enrichment panel")
         print()
-        print("Touch Interface (right side - logs area):")
-        print("  Touch & Drag   Scroll through log history")
-        print("  Single Tap     Exit scrollback mode")
-        print("  Double Tap     Toggle debug filter")
+        print("Touch Interface:")
+        print("  Left side:     Swipe left/right to navigate panels")
+        print("                 Tap to cycle to next panel")
+        print("  Right side:    Touch & drag to scroll logs")
+        print("                 Single tap exits scrollback")
+        print("                 Double tap toggles debug")
+        print()
+        print("Enrichment Panels:")
+        print("  Now Playing      Main metadata display with track info")
+        print("  Cover Art        Large album cover display")
+        print("  Artist Enrichment Biography, tags, similar artists, social stats")
+        print("  Album Enrichment  Album reviews, credits, and release information")
+        print("  Song Enrichment   Track information and song-specific data")
+        print("  Discography       Artist discography and release history")
+        print("  Social Stats      Scrobble counts, popularity")
+        print("  Service Status    Data freshness, completeness")
+        print("  Audio Levels      Real-time audio level meters")
         print()
         print("Debug Options:")
         print("  --no-debug:        Hide all debug messages")
@@ -1214,7 +1387,10 @@ def main():
 
     try:
         app = DisplayApp(
-            use_fullscreen=not windowed, kiosk_mode=kiosk, headless=cli_mode, debug_subsystems=debug_subsystems
+            use_fullscreen=not windowed,
+            kiosk_mode=kiosk,
+            headless=cli_mode,
+            debug_subsystems=debug_subsystems,
         )
         result = app.run(
             capture_file=capture_file,

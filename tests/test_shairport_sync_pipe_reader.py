@@ -1,13 +1,9 @@
-"""
-Tests for the ShairportSyncPipeReader class and XML parsing functionality.
-"""
+"""Tests for the ShairportSyncPipeReader class and XML parsing functionality."""
 
 import base64
 from unittest.mock import Mock
 
-import pytest
-
-from nowplaying.metadata_reader import ShairportSyncPipeReader
+from nowplaying.metadata_reader import ShairportSyncPipeReader  # noqa: I100
 from nowplaying.playback_state import PlaybackState
 
 

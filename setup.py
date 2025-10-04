@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Setup script for now-playing package.
-"""
+"""Setup script for now-playing package."""
 
 from setuptools import find_packages, setup
 
@@ -32,11 +30,13 @@ setup(
     python_requires=">=3.8",
     install_requires=[
         "pygame>=2.0.0",
+        "mcp>=1.0.0",
     ],
     entry_points={
         "console_scripts": [
             "nowplaying-display=nowplaying.display:main",
             "nowplaying-test=nowplaying.test:main",
+            "nowplaying-mcp=nowplaying.cli:mcp_main",
         ],
     },
     include_package_data=True,

@@ -1,23 +1,18 @@
 #!/usr/bin/env python3
-"""
-Command-line utility for capturing shairport-sync metadata to file.
-"""
+"""Command-line utility for capturing shairport-sync metadata to file."""
 
 import argparse
 import signal
 import sys
 import time
-from pathlib import Path
 
-# Add the nowplaying package to the path
-sys.path.insert(0, str(Path(__file__).parent))
-
-from nowplaying.capture_replay import create_capture_filename  # noqa: E402
-from nowplaying.metadata_monitor import StateMonitor  # noqa: E402
-from nowplaying.playback_state import PlaybackState  # noqa: E402
+from nowplaying.capture_replay import create_capture_filename
+from nowplaying.metadata_monitor import StateMonitor
+from nowplaying.playback_state import PlaybackState
 
 
 def main():
+    """Run the metadata capture utility."""
     parser = argparse.ArgumentParser(description="Capture shairport-sync metadata for debugging")
     parser.add_argument(
         "--pipe",
