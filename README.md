@@ -173,6 +173,27 @@ pytest
 pytest tests/test_metadata_display.py
 ```
 
+## Music Discovery (merged notes)
+
+This project contains a Music Discovery application built on the ContentPanel
+architecture. The application provides swipeable content panels, context
+hold/release, and plugin-capable enrichment services. Developer quick-start and
+architecture pointers are below (previously in MUSIC_DISCOVERY.md).
+
+Developer quick start:
+
+```bash
+make install-dev
+python3 music_discovery.py --windowed
+```
+
+Architecture pointers:
+- Main app: `music_discovery.py`
+- Panels: `nowplaying/panels/`
+- Enrichment: `nowplaying/enrichment/`
+- Plugin loader: `nowplaying/plugin_system.py`
+
+
 ### Building
 
 ```bash

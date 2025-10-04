@@ -27,11 +27,7 @@ class MetadataCapture:
     """Captures shairport-sync metadata with timestamps for later replay."""
 
     # TODO (low-level): Consider refactoring this class to be a context manager
-    # (implement __enter__ and __exit__) so callers can use:
-    #   with MetadataCapture(file) as capture:
-    #       capture.capture_line(...)
-    # Keeping the TODO here because it is a focused, file-local implementation
-    # improvement that affects file-handle lifecycle and tests.
+    # (implement __enter__ and __exit__) so callers can use a `with` block.
 
     def __init__(self, capture_file: str, compress_images: bool = False):
         """Initialize capture to specified file.
