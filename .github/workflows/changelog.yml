@@ -45,7 +45,8 @@ jobs:
       # 📄 Generate or update CHANGELOG.md from commit history
       - name: Generate changelog
         run: |
-          git cliff --prepend CHANGELOG.md -o CHANGELOG.md
+          # Generate changelog for unreleased commits and prepend to CHANGELOG.md
+          git cliff --unreleased --prepend CHANGELOG.md -o CHANGELOG.md
 
       # 📤 Commit and push the changelog update, if changed
       - name: Commit and push changelog
