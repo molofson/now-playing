@@ -67,20 +67,24 @@ type-check:
 
 # ─── Run Tests ───────────────────────────────────────────────────────────
 test:
-	@echo "Running tests..."
+	@echo "Running tests (match CI: skip integration tests by default)..."
 	@echo "Environment: $(ENV_DESC)"
 	@PYTHONPATH=$$(pwd) $(PYTEST) --cov=nowplaying \
-	           --cov-report=term-missing \
-	           tests/
+		   --cov-report=term-missing \
+		   -m "not integration" \
+		   tests/
 
 # ─── Run Tests (CI - skip integration tests) ─────────────────────────────
-test-ci:
-	@echo "Running tests (skipping integration tests)..."
+test-ci: test
+	@echo "Running CI-style tests (alias to test)"
+
+# Run all tests including integration ones
+test-all:
+	@echo "Running all tests (including integration tests)..."
 	@echo "Environment: $(ENV_DESC)"
 	@PYTHONPATH=$$(pwd) $(PYTEST) --cov=nowplaying \
-	           --cov-report=term-missing \
-	           -m "not integration" \
-	           tests/
+		   --cov-report=term-missing \
+		   tests/
 
 # ─── Test Coverage ───────────────────────────────────────────────────────
 coverage: test

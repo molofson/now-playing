@@ -1,3 +1,4 @@
+```markdown
 COMMIT GUIDE
 ===========
 
@@ -30,3 +31,30 @@ Notes
 - Keep credential-requiring code gated behind env vars and mark integration tests so CI stays green.
 
 If you want, I can add this to the README or expand it with example commands for your shell.
+
+```
+
+Workspace cleanliness and branch hygiene
+--------------------------------------
+
+Keep the repository root tidy. Prefer placing utility scripts and demos under
+`devtools/` or `scripts/` and tests under `tests/`. Avoid leaving temporary or
+large binary files at the top level. When reorganizing files, use `git mv`
+so history is preserved.
+
+Transient branches and cleanup
+------------------------------
+
+- Create short-lived branches for experiments (e.g., `feat/` or `copilot/`),
+  but delete them when finished:
+  - Delete remote: `git push origin --delete <branch>`
+  - Delete local: `git branch -d <branch>` (or `-D` if necessary)
+
+- Identify branches merged into `main` and remove them to reduce clutter:
+  `git branch --merged main` (local) and `git branch -r --merged origin/main` for remotes.
+
+- For automation or many branches, consider scripting a safe prune that only
+  deletes branches older than a threshold (e.g., 30 days).
+
+Following these practices keeps the top-level directory and branch list
+manageable and speeds up both local development and CI.
